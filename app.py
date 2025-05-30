@@ -79,13 +79,28 @@ st.markdown("""
         flex-direction: row;
         gap: 20px;
         margin-bottom: 20px;
+        flex-wrap: wrap;
     }
     .comparison-card {
         background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
+        padding: 20px;
+        border-radius: 10px;
         border-left: 5px solid #4e8df5;
         flex: 1;
+        min-width: 300px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .comparison-card h4 {
+        margin-top: 0;
+        color: #2c3e50;
+        font-size: 1.1em;
+    }
+    .comparison-card p {
+        font-size: 1.1em;
+        line-height: 1.4;
+        margin-bottom: 0;
+        color: #34495e;
+        font-weight: 500;
     }
     .attention-flow {
         background-color: #fff8e1;
@@ -110,21 +125,49 @@ st.markdown("---")
 
 # Função para gerar frases com a API OpenAI
 def generate_sentences_with_openai(api_key, prompt):
+    """Gera frases usando a API OpenAI com tratamento de erros robusto"""
     try:
-        client = openai.OpenAI(api_key=api_key)
+        # Validar formato da chave
+        if not api_key or not api_key.strip():
+            raise ValueError("Chave da API não fornecida")
+        
+        if not api_key.startswith('sk-'):
+            raise ValueError("Formato da chave inválido - deve começar com 'sk-'")
+        
+        # Inicializar cliente OpenAI
+        client = openai.OpenAI(api_key=api_key.strip())
+        
+        # Fazer chamada para API
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Você é um assistente especializado em gerar frases para análise linguística de modelos de linguagem."},
+                {
+                    "role": "system", 
+                    "content": "Você é um assistente especializado em gerar frases para análise linguística de modelos de linguagem. Sempre gere exatamente duas frases conforme solicitado."
+                },
                 {"role": "user", "content": prompt}
             ],
             max_tokens=150,
-            temperature=0.7
+            temperature=0.7,
+            timeout=30  # Timeout de 30 segundos
         )
+        
         return response.choices[0].message.content.strip()
+        
+    except openai.AuthenticationError:
+        raise Exception("❌ Erro de autenticação: Verifique se sua chave da API está correta")
+    except openai.RateLimitError:
+        raise Exception("⏱️ Limite de taxa excedido: Aguarde alguns minutos e tente novamente")
+    except openai.APIConnectionError:
+        raise Exception("🌐 Erro de conexão: Verifique sua conexão com a internet")
+    except openai.APITimeoutError:
+        raise Exception("⏱️ Timeout: A API demorou muito para responder")
     except Exception as e:
-        st.error(f"Erro ao chamar a API OpenAI: {str(e)}")
-        return None
+        if "api_key" in str(e).lower():
+            raise Exception("🔑 Erro na chave da API: Verifique se ela está correta e ativa")
+        else:
+            raise Exception(f"❌ Erro inesperado: {str(e)}")
+
 
 # Função para tokenizar uma frase
 def tokenize_sentence(sentence):
@@ -151,14 +194,14 @@ def calculate_token_importance(attention_weights, tokens, real_tokens_count):
 
 # Sidebar para controles
 with st.sidebar:
-    st.header("Parâmetros do Modelo")
+    st.header("⚙️ Parâmetros do Modelo")
     
     # Fixar dimensão do modelo em 120 conforme solicitado
     d_model = 120
-    st.info(f"Dimensão do Modelo (d_model): {d_model}")
+    st.info(f"📏 Dimensão do Modelo (d_model): {d_model}")
     
     num_heads = st.slider(
-        "Número de Cabeças de Atenção",
+        "🧠 Número de Cabeças de Atenção",
         min_value=1,
         max_value=12,
         value=8,
@@ -168,33 +211,54 @@ with st.sidebar:
     
     # Garantir que d_model seja divisível pelo número de cabeças
     if d_model % num_heads != 0:
-        st.warning(f"Para evitar erros, o número de cabeças deve ser um divisor de d_model ({d_model}).")
+        st.warning(f"⚠️ Para evitar erros, o número de cabeças deve ser um divisor de d_model ({d_model}).")
         valid_heads = [h for h in range(1, 13) if d_model % h == 0]
-        st.info(f"Valores válidos para número de cabeças: {', '.join(map(str, valid_heads))}")
+        st.info(f"✅ Valores válidos para número de cabeças: {', '.join(map(str, valid_heads))}")
         num_heads = max([h for h in valid_heads if h <= num_heads], default=8)
-        st.success(f"Ajustado para {num_heads} cabeças.")
+        st.success(f"🔧 Ajustado para {num_heads} cabeças.")
     
     # Fixar comprimento da sequência em 10 conforme solicitado
     seq_length = 10
-    st.info(f"Comprimento da Sequência: {seq_length}")
+    st.info(f"📐 Comprimento da Sequência: {seq_length}")
     
     st.markdown("---")
     
     # Entrada da chave da API OpenAI
-    st.header("Integração com OpenAI")
-    api_key = st.text_input("Chave da API OpenAI", type="password", help="Insira sua chave da API OpenAI para gerar frases comparativas")
+    st.header("🔑 Integração com OpenAI")
+    
+    # Input para a chave da API
+    api_key = st.text_input(
+        "Chave da API OpenAI", 
+        type="password", 
+        help="Insira sua chave da API OpenAI para gerar frases comparativas",
+        placeholder="sk-..."
+    )
     
     if api_key:
-        st.success("Chave da API inserida com sucesso!")
+        if api_key.startswith('sk-') and len(api_key) > 20:
+            st.success("✅ Chave da API inserida com sucesso!")
+        else:
+            st.warning("⚠️ Formato da chave parece incorreto. Certifique-se de que começa com 'sk-'")
+    else:
+        st.info("💡 Cole sua chave da API OpenAI acima para gerar frases personalizadas")
     
     st.markdown("---")
-    st.markdown("### Sobre esta Aplicação")
+    
+    # Informações sobre a aplicação
+    st.header("📚 Sobre esta Aplicação")
     st.markdown("""
-    Esta aplicação demonstra o funcionamento do mecanismo de Attention em arquiteturas Transformer.
+    **🎯 Objetivo:**
+    Demonstrar visualmente como funciona o mecanismo de Attention em arquiteturas Transformer.
     
-    Agora com integração à API OpenAI para gerar frases comparativas e análise de importância de tokens.
+    **✨ Funcionalidades:**
+    - 🔍 Análise passo a passo do Self-Attention
+    - 🧠 Visualização Multi-Head Attention  
+    - ⚖️ Análise de importância de tokens
+    - 🔄 Comparação entre frases
+    - 🤖 Integração com API OpenAI
     
-    Desenvolvido com Streamlit e Matplotlib.
+    **🛠️ Tecnologias:**
+    Streamlit • Matplotlib • NumPy • OpenAI API
     """)
 
 # Classe principal do simulador
@@ -860,31 +924,26 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Opção para usar frases de exemplo ou gerar com OpenAI
-    use_example = st.checkbox("Usar frases de exemplo (sem API OpenAI)", value=not bool(api_key))
+    # Inicializar frases padrão
+    sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
+    sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
     
-    if use_example:
-        # Frases de exemplo com exatamente 10 palavras
-        sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
-        sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
+    # Opção para usar frases de exemplo ou gerar com OpenAI
+    use_example = st.checkbox("Usar frases de exemplo (sem API OpenAI)", value=True)
+    
+    if not use_example and api_key:
+        # Seção para geração com OpenAI
+        st.markdown("### 🤖 Geração com OpenAI")
         
-        st.markdown(f"""
-        <div class="comparison-container">
-            <div class="comparison-card">
-                <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
-                <p>{sentence1}</p>
-            </div>
-            <div class="comparison-card">
-                <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
-                <p>{sentence2}</p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        if api_key:
-            # Botão para gerar frases
-            if st.button("Gerar Frases Comparativas"):
-                with st.spinner("Gerando frases com a API OpenAI..."):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.info("Configure sua chave da API no painel lateral e clique no botão para gerar frases personalizadas.")
+        with col2:
+            generate_button = st.button("🎲 Gerar Frases", type="primary")
+        
+        if generate_button:
+            try:
+                with st.spinner("🔄 Gerando frases com a API OpenAI..."):
                     # Prompt melhorado para gerar frases com palavras similares
                     prompt = """
                     Gere duas frases em português que atendam aos seguintes critérios:
@@ -907,67 +966,59 @@ def main():
                     
                     if result:
                         # Dividir o resultado em duas frases
-                        sentences = [s.strip() for s in result.split('\n') if s.strip()]
+                        sentences = [s.strip().rstrip('.').rstrip('!').rstrip('?') for s in result.split('\n') if s.strip()]
+                        
                         if len(sentences) >= 2:
-                            sentence1 = sentences[0].rstrip('.')
-                            sentence2 = sentences[1].rstrip('.')
+                            sentence1 = sentences[0]
+                            sentence2 = sentences[1]
                             
-                            # Verificar se as frases têm aproximadamente 10 palavras
-                            words1 = len(sentence1.split())
-                            words2 = len(sentence2.split())
-                            
-                            # Ajustar se necessário (adicionar ponto final se não houver 10 palavras)
-                            if words1 < 10:
+                            # Garantir que termine com ponto
+                            if not sentence1.endswith('.'):
                                 sentence1 += "."
-                            if words2 < 10:
+                            if not sentence2.endswith('.'):
                                 sentence2 += "."
                             
-                            st.session_state['sentence1'] = sentence1
-                            st.session_state['sentence2'] = sentence2
+                            # Salvar no session state
+                            st.session_state['generated_sentence1'] = sentence1
+                            st.session_state['generated_sentence2'] = sentence2
                             
-                            st.markdown(f"""
-                            <div class="comparison-container">
-                                <div class="comparison-card">
-                                    <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
-                                    <p>{sentence1}</p>
-                                </div>
-                                <div class="comparison-card">
-                                    <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
-                                    <p>{sentence2}</p>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.success("✅ Frases geradas com sucesso!")
+                            st.experimental_rerun()
                         else:
-                            st.error("Não foi possível obter duas frases distintas da API.")
-            elif 'sentence1' in st.session_state and 'sentence2' in st.session_state:
-                # Mostrar frases já geradas
-                sentence1 = st.session_state['sentence1']
-                sentence2 = st.session_state['sentence2']
-                
-                st.markdown(f"""
-                <div class="comparison-container">
-                    <div class="comparison-card">
-                        <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
-                        <p>{sentence1}</p>
-                    </div>
-                    <div class="comparison-card">
-                        <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
-                        <p>{sentence2}</p>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Mensagem para clicar no botão
-                st.info("Clique no botão 'Gerar Frases Comparativas' para obter frases da API OpenAI.")
-                # Usar frases de exemplo como fallback
-                sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
-                sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
-        else:
-            # Mensagem para inserir a chave da API
-            st.warning("Insira sua chave da API OpenAI no painel lateral ou use as frases de exemplo.")
-            # Usar frases de exemplo como fallback
-            sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
-            sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
+                            st.error("❌ Não foi possível obter duas frases distintas da API.")
+                    
+            except Exception as e:
+                st.error(f"❌ Erro ao gerar frases: {str(e)}")
+                st.info("💡 Verifique se sua chave da API está correta e tente novamente.")
+        
+        # Usar frases geradas se disponíveis
+        if 'generated_sentence1' in st.session_state and 'generated_sentence2' in st.session_state:
+            sentence1 = st.session_state['generated_sentence1']
+            sentence2 = st.session_state['generated_sentence2']
+            
+            # Botão para limpar frases geradas
+            if st.button("🔄 Usar Frases de Exemplo"):
+                del st.session_state['generated_sentence1']
+                del st.session_state['generated_sentence2']
+                st.experimental_rerun()
+    
+    elif not use_example and not api_key:
+        st.warning("⚠️ Insira sua chave da API OpenAI no painel lateral para gerar frases personalizadas.")
+        st.info("📝 Usando frases de exemplo por enquanto...")
+    
+    # Exibir frases selecionadas
+    st.markdown(f"""
+    <div class="comparison-container">
+        <div class="comparison-card">
+            <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
+            <p>{sentence1}</p>
+        </div>
+        <div class="comparison-card">
+            <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
+            <p>{sentence2}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Tokenizar as frases
     tokens1 = tokenize_sentence(sentence1)
