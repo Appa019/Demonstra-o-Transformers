@@ -129,11 +129,19 @@ with st.sidebar:
     num_heads = st.slider(
         "Número de Cabeças de Atenção",
         min_value=1,
-        max_value=16,
+        max_value=12,
         value=8,
         step=1,
         help="Número de cabeças no mecanismo de Multi-Head Attention"
     )
+    
+    # Garantir que d_model seja divisível pelo número de cabeças
+    if d_model % num_heads != 0:
+        st.warning(f"Para evitar erros, o número de cabeças deve ser um divisor de d_model ({d_model}).")
+        valid_heads = [h for h in range(1, 13) if d_model % h == 0]
+        st.info(f"Valores válidos para número de cabeças: {', '.join(map(str, valid_heads))}")
+        num_heads = max([h for h in valid_heads if h <= num_heads], default=8)
+        st.success(f"Ajustado para {num_heads} cabeças.")
     
     # Fixar comprimento da sequência em 10 conforme solicitado
     seq_length = 10
@@ -188,16 +196,21 @@ class TransformerSimulator:
         # Garantir que temos no máximo seq_length tokens
         tokens = tokens[:min(len(tokens), self.seq_length)]
         
+        # Armazenar o número de tokens reais (não padding)
+        real_tokens_count = len(tokens)
+        
         # Preencher com tokens genéricos se necessário
         while len(tokens) < self.seq_length:
-            tokens.append(f"<pad>")
+            tokens.append("")  # Usar string vazia em vez de <pad> para não poluir visualização
             
         embeddings = np.random.randn(self.seq_length, self.d_model) * 0.5
         
         # Adicionar alguma estrutura semântica simulada
         # Isso é uma simplificação, em modelos reais os embeddings seriam aprendidos
         for i, token in enumerate(tokens):
-            if token in ["o", "a", "os", "as", "um", "uma"]:  # artigos
+            if i >= real_tokens_count:  # Para tokens de padding
+                embeddings[i] *= 0.1  # Valores menores para padding
+            elif token in ["o", "a", "os", "as", "um", "uma"]:  # artigos
                 embeddings[i] *= 0.8
             elif token in ["de", "em", "para", "com", "por"]:  # preposições
                 embeddings[i] *= 0.7
@@ -206,14 +219,17 @@ class TransformerSimulator:
             else:  # substantivos, verbos, etc.
                 embeddings[i] += 0.3
         
-        return embeddings, tokens
+        return embeddings, tokens, real_tokens_count
     
     def visualize_embeddings_and_positional(self, tokens):
         """Visualiza embeddings e encoding posicional"""
-        embeddings, tokens_used = self.create_embeddings_from_tokens(tokens)
+        embeddings, tokens_used, real_tokens_count = self.create_embeddings_from_tokens(tokens)
         pos_encoding = self.create_positional_encoding()
         
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        
+        # Criar labels para os eixos, substituindo strings vazias por espaços
+        x_labels = [t if t else " " for t in tokens_used]
         
         # 1. Embeddings de tokens
         im1 = axes[0,0].imshow(embeddings.T, cmap='RdBu', aspect='auto')
@@ -221,7 +237,12 @@ class TransformerSimulator:
         axes[0,0].set_xlabel('Posição na Sequência')
         axes[0,0].set_ylabel('Dimensões do Embedding')
         axes[0,0].set_xticks(range(self.seq_length))
-        axes[0,0].set_xticklabels(tokens_used, rotation=45)
+        axes[0,0].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[0,0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im1, ax=axes[0,0])
         
         # 2. Positional Encoding
@@ -238,7 +259,12 @@ class TransformerSimulator:
         axes[1,0].set_xlabel('Posição na Sequência')
         axes[1,0].set_ylabel('Dimensões')
         axes[1,0].set_xticks(range(self.seq_length))
-        axes[1,0].set_xticklabels(tokens_used, rotation=45)
+        axes[1,0].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[1,0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im3, ax=axes[1,0])
         
         # 4. Padrões do Positional Encoding
@@ -246,18 +272,21 @@ class TransformerSimulator:
         axes[1,1].set_title('4. Padrões Sinusoidais do Positional Encoding')
         axes[1,1].set_xlabel('Posição')
         axes[1,1].set_ylabel('Valor')
-        axes[1,1].legend([f'Dim {i}' for i in range(10)], bbox_to_anchor=(1.05, 1), loc='upper left')
+        axes[1,1].legend([f'Dim {i}' for i in range(10)], loc='upper right', fontsize=8)
         
         plt.tight_layout()
         
-        return fig, final_embeddings, tokens_used
+        return fig, final_embeddings, tokens_used, real_tokens_count
     
-    def compute_attention_step_by_step(self, X, tokens):
+    def compute_attention_step_by_step(self, X, tokens, real_tokens_count):
         """Computa self-attention passo a passo com visualizações"""
         # Passo 1: Criar Q, K, V
         Q = X @ self.W_q  # Queries
         K = X @ self.W_k  # Keys  
         V = X @ self.W_v  # Values
+        
+        # Criar labels para os eixos, substituindo strings vazias por espaços
+        x_labels = [t if t else " " for t in tokens]
         
         # Visualizar Q, K, V
         fig1, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -267,7 +296,12 @@ class TransformerSimulator:
         axes[0].set_xlabel('Tokens')
         axes[0].set_ylabel('Dimensões')
         axes[0].set_xticks(range(self.seq_length))
-        axes[0].set_xticklabels(tokens, rotation=45)
+        axes[0].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im1, ax=axes[0])
         
         im2 = axes[1].imshow(K.T, cmap='Greens', aspect='auto')
@@ -275,7 +309,12 @@ class TransformerSimulator:
         axes[1].set_xlabel('Tokens')
         axes[1].set_ylabel('Dimensões')
         axes[1].set_xticks(range(self.seq_length))
-        axes[1].set_xticklabels(tokens, rotation=45)
+        axes[1].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[1].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im2, ax=axes[1])
         
         im3 = axes[2].imshow(V.T, cmap='Blues', aspect='auto')
@@ -283,7 +322,12 @@ class TransformerSimulator:
         axes[2].set_xlabel('Tokens')
         axes[2].set_ylabel('Dimensões')
         axes[2].set_xticks(range(self.seq_length))
-        axes[2].set_xticklabels(tokens, rotation=45)
+        axes[2].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[2].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im3, ax=axes[2])
         
         plt.tight_layout()
@@ -307,8 +351,14 @@ class TransformerSimulator:
         axes[0].set_ylabel('Query Positions')
         axes[0].set_xticks(range(self.seq_length))
         axes[0].set_yticks(range(self.seq_length))
-        axes[0].set_xticklabels(tokens, rotation=45)
-        axes[0].set_yticklabels(tokens)
+        axes[0].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        axes[0].set_yticklabels(x_labels, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            axes[0].axhline(y=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im1, ax=axes[0])
         
         # Attention Weights (depois do softmax)
@@ -318,12 +368,17 @@ class TransformerSimulator:
         axes[1].set_ylabel('Query Positions')
         axes[1].set_xticks(range(self.seq_length))
         axes[1].set_yticks(range(self.seq_length))
-        axes[1].set_xticklabels(tokens, rotation=45)
-        axes[1].set_yticklabels(tokens)
+        axes[1].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        axes[1].set_yticklabels(x_labels, fontsize=9)
         
-        # Adicionar valores dos pesos na visualização
-        for i in range(self.seq_length):
-            for j in range(self.seq_length):
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[1].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            axes[1].axhline(y=i-0.5, color='gray', linestyle='--', alpha=0.3)
+        
+        # Adicionar valores dos pesos na visualização apenas para tokens reais
+        for i in range(real_tokens_count):
+            for j in range(real_tokens_count):
                 text = axes[1].text(j, i, f'{attention_weights[i, j]:.2f}',
                                   ha="center", va="center", color="black", fontsize=8)
         
@@ -341,7 +396,12 @@ class TransformerSimulator:
         axes[0].set_xlabel('Tokens')
         axes[0].set_ylabel('Dimensões')
         axes[0].set_xticks(range(self.seq_length))
-        axes[0].set_xticklabels(tokens, rotation=45)
+        axes[0].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im1, ax=axes[0])
         
         im2 = axes[1].imshow(output.T, cmap='Purples', aspect='auto')
@@ -349,17 +409,25 @@ class TransformerSimulator:
         axes[1].set_xlabel('Tokens')
         axes[1].set_ylabel('Dimensões')
         axes[1].set_xticks(range(self.seq_length))
-        axes[1].set_xticklabels(tokens, rotation=45)
+        axes[1].set_xticklabels(x_labels, rotation=45, fontsize=9)
+        
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[1].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
         plt.colorbar(im2, ax=axes[1])
         
         plt.tight_layout()
         
         return fig1, fig2, fig3, Q, K, V, attention_weights, output
     
-    def visualize_attention_flow(self, attention_weights, tokens, token_index=3):
+    def visualize_attention_flow(self, attention_weights, tokens, token_index=3, real_tokens_count=None):
         """Visualiza o fluxo de atenção para um token específico"""
-        # Garantir que o índice está dentro dos limites
-        token_index = min(token_index, len(tokens)-1)
+        # Garantir que o índice está dentro dos limites dos tokens reais
+        if real_tokens_count is None:
+            real_tokens_count = len([t for t in tokens if t])
+            
+        token_index = min(token_index, real_tokens_count-1)
         
         # Obter os pesos de atenção para o token selecionado
         token_attention = attention_weights[token_index, :]
@@ -368,10 +436,10 @@ class TransformerSimulator:
         fig, ax = plt.subplots(figsize=(12, 6))
         
         # Posições dos tokens no eixo x
-        token_positions = np.arange(len(tokens))
+        token_positions = np.arange(real_tokens_count)
         
-        # Altura das barras (pesos de atenção)
-        bar_heights = token_attention
+        # Altura das barras (pesos de atenção) - apenas para tokens reais
+        bar_heights = token_attention[:real_tokens_count]
         
         # Criar barras coloridas
         bars = ax.bar(token_positions, bar_heights, color='skyblue', alpha=0.7)
@@ -405,7 +473,7 @@ class TransformerSimulator:
         
         # Configurar eixos
         ax.set_xticks(token_positions)
-        ax.set_xticklabels(tokens, rotation=45)
+        ax.set_xticklabels([t for t in tokens[:real_tokens_count]], rotation=45)
         ax.set_ylabel('Peso de Atenção')
         ax.set_title(f'Fluxo de Atenção para o Token "{tokens[token_index]}"')
         
@@ -421,95 +489,111 @@ class TransformerSimulator:
         
         return fig
     
-    def analyze_attention_patterns(self, attention_weights, tokens):
+    def analyze_attention_patterns(self, attention_weights, tokens, real_tokens_count=None):
         """Analisa padrões específicos de atenção"""
+        # Determinar o número de tokens reais se não fornecido
+        if real_tokens_count is None:
+            real_tokens_count = len([t for t in tokens if t])
+            
+        # Usar apenas tokens reais para análise
+        real_tokens = tokens[:real_tokens_count]
+        real_weights = attention_weights[:real_tokens_count, :real_tokens_count]
+        
         # 1. Atenção por token específico
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
         
         # Análise para o primeiro substantivo (posição 1)
-        token_pos1 = min(1, self.seq_length-1)
-        token1_attention = attention_weights[token_pos1, :]
-        axes[0,0].bar(range(self.seq_length), token1_attention, color='skyblue', alpha=0.7)
-        axes[0,0].set_title(f'Atenção de "{tokens[token_pos1]}" para outros tokens')
+        token_pos1 = min(1, real_tokens_count-1)
+        token1_attention = real_weights[token_pos1, :]
+        axes[0,0].bar(range(real_tokens_count), token1_attention, color='skyblue', alpha=0.7)
+        axes[0,0].set_title(f'Atenção de "{real_tokens[token_pos1]}" para outros tokens')
         axes[0,0].set_xlabel('Tokens')
         axes[0,0].set_ylabel('Peso de Atenção')
-        axes[0,0].set_xticks(range(self.seq_length))
-        axes[0,0].set_xticklabels(tokens, rotation=45)
+        axes[0,0].set_xticks(range(real_tokens_count))
+        axes[0,0].set_xticklabels(real_tokens, rotation=45)
         
         # Adicionar valores nas barras
         for i, v in enumerate(token1_attention):
             axes[0,0].text(i, v + 0.01, f'{v:.3f}', ha='center', va='bottom')
         
         # Análise para o verbo (posição 2)
-        token_pos2 = min(2, self.seq_length-1)
-        token2_attention = attention_weights[token_pos2, :]
-        axes[0,1].bar(range(self.seq_length), token2_attention, color='lightcoral', alpha=0.7)
-        axes[0,1].set_title(f'Atenção de "{tokens[token_pos2]}" para outros tokens')
+        token_pos2 = min(2, real_tokens_count-1)
+        token2_attention = real_weights[token_pos2, :]
+        axes[0,1].bar(range(real_tokens_count), token2_attention, color='lightcoral', alpha=0.7)
+        axes[0,1].set_title(f'Atenção de "{real_tokens[token_pos2]}" para outros tokens')
         axes[0,1].set_xlabel('Tokens')
         axes[0,1].set_ylabel('Peso de Atenção')
-        axes[0,1].set_xticks(range(self.seq_length))
-        axes[0,1].set_xticklabels(tokens, rotation=45)
+        axes[0,1].set_xticks(range(real_tokens_count))
+        axes[0,1].set_xticklabels(real_tokens, rotation=45)
         
         for i, v in enumerate(token2_attention):
             axes[0,1].text(i, v + 0.01, f'{v:.3f}', ha='center', va='bottom')
         
         # Mapa de calor com anotações
-        sns.heatmap(attention_weights, annot=True, fmt='.2f', 
-                   xticklabels=tokens, yticklabels=tokens,
+        sns.heatmap(real_weights, annot=True, fmt='.2f', 
+                   xticklabels=real_tokens, yticklabels=real_tokens,
                    cmap='YlOrRd', ax=axes[1,0])
         axes[1,0].set_title('Matriz de Atenção Completa')
         axes[1,0].set_xlabel('Attending to (Keys)')
         axes[1,0].set_ylabel('Attending from (Queries)')
         
         # Distribuição dos pesos de atenção
-        axes[1,1].hist(attention_weights.flatten(), bins=20, alpha=0.7, color='green')
+        axes[1,1].hist(real_weights.flatten(), bins=20, alpha=0.7, color='green')
         axes[1,1].set_title('Distribuição dos Pesos de Atenção')
         axes[1,1].set_xlabel('Valor do Peso')
         axes[1,1].set_ylabel('Frequência')
-        axes[1,1].axvline(attention_weights.mean(), color='red', linestyle='--', 
-                         label=f'Média: {attention_weights.mean():.3f}')
+        axes[1,1].axvline(real_weights.mean(), color='red', linestyle='--', 
+                         label=f'Média: {real_weights.mean():.3f}')
         axes[1,1].legend()
         
         plt.tight_layout()
         
         return fig
     
-    def compare_attention_patterns(self, attention_weights1, tokens1, attention_weights2, tokens2):
+    def compare_attention_patterns(self, attention_weights1, tokens1, real_tokens_count1, 
+                                  attention_weights2, tokens2, real_tokens_count2):
         """Compara padrões de atenção entre duas frases"""
+        # Usar apenas tokens reais para análise
+        real_tokens1 = tokens1[:real_tokens_count1]
+        real_weights1 = attention_weights1[:real_tokens_count1, :real_tokens_count1]
+        
+        real_tokens2 = tokens2[:real_tokens_count2]
+        real_weights2 = attention_weights2[:real_tokens_count2, :real_tokens_count2]
+        
         fig, axes = plt.subplots(2, 2, figsize=(18, 14))
         
         # Mapa de calor para a primeira frase
-        sns.heatmap(attention_weights1, annot=True, fmt='.2f', 
-                   xticklabels=tokens1, yticklabels=tokens1,
+        sns.heatmap(real_weights1, annot=True, fmt='.2f', 
+                   xticklabels=real_tokens1, yticklabels=real_tokens1,
                    cmap='YlOrRd', ax=axes[0,0])
         axes[0,0].set_title('Matriz de Atenção - Frase 1')
         axes[0,0].set_xlabel('Attending to (Keys)')
         axes[0,0].set_ylabel('Attending from (Queries)')
         
         # Mapa de calor para a segunda frase
-        sns.heatmap(attention_weights2, annot=True, fmt='.2f', 
-                   xticklabels=tokens2, yticklabels=tokens2,
+        sns.heatmap(real_weights2, annot=True, fmt='.2f', 
+                   xticklabels=real_tokens2, yticklabels=real_tokens2,
                    cmap='YlOrRd', ax=axes[0,1])
         axes[0,1].set_title('Matriz de Atenção - Frase 2')
         axes[0,1].set_xlabel('Attending to (Keys)')
         axes[0,1].set_ylabel('Attending from (Queries)')
         
         # Distribuição dos pesos para a primeira frase
-        axes[1,0].hist(attention_weights1.flatten(), bins=20, alpha=0.7, color='blue', label='Frase 1')
+        axes[1,0].hist(real_weights1.flatten(), bins=20, alpha=0.7, color='blue', label='Frase 1')
         axes[1,0].set_title('Distribuição dos Pesos - Frase 1')
         axes[1,0].set_xlabel('Valor do Peso')
         axes[1,0].set_ylabel('Frequência')
-        axes[1,0].axvline(attention_weights1.mean(), color='darkblue', linestyle='--', 
-                         label=f'Média: {attention_weights1.mean():.3f}')
+        axes[1,0].axvline(real_weights1.mean(), color='darkblue', linestyle='--', 
+                         label=f'Média: {real_weights1.mean():.3f}')
         axes[1,0].legend()
         
         # Distribuição dos pesos para a segunda frase
-        axes[1,1].hist(attention_weights2.flatten(), bins=20, alpha=0.7, color='red', label='Frase 2')
+        axes[1,1].hist(real_weights2.flatten(), bins=20, alpha=0.7, color='red', label='Frase 2')
         axes[1,1].set_title('Distribuição dos Pesos - Frase 2')
         axes[1,1].set_xlabel('Valor do Peso')
         axes[1,1].set_ylabel('Frequência')
-        axes[1,1].axvline(attention_weights2.mean(), color='darkred', linestyle='--', 
-                         label=f'Média: {attention_weights2.mean():.3f}')
+        axes[1,1].axvline(real_weights2.mean(), color='darkred', linestyle='--', 
+                         label=f'Média: {real_weights2.mean():.3f}')
         axes[1,1].legend()
         
         plt.tight_layout()
@@ -520,7 +604,7 @@ class MultiHeadAttention:
     def __init__(self, d_model=64, num_heads=8, seq_length=8):
         self.d_model = d_model
         self.num_heads = num_heads
-        self.d_k = d_model // num_heads
+        self.d_k = d_model // num_heads  # Garantir que d_model é divisível por num_heads
         self.seq_length = seq_length
         
         np.random.seed(42)
@@ -544,8 +628,12 @@ class MultiHeadAttention:
         
         return output, attention_weights
     
-    def compute_multi_head_attention(self, X, tokens):
+    def compute_multi_head_attention(self, X, tokens, real_tokens_count=None):
         """Computa multi-head attention"""
+        # Determinar o número de tokens reais se não fornecido
+        if real_tokens_count is None:
+            real_tokens_count = len([t for t in tokens if t])
+            
         head_outputs = []
         head_attentions = []
         
@@ -564,12 +652,19 @@ class MultiHeadAttention:
         final_output = concatenated @ self.W_o
         
         # Visualizar diferentes cabeças
-        fig = self.visualize_multi_head_patterns(head_attentions, tokens)
+        fig = self.visualize_multi_head_patterns(head_attentions, tokens, real_tokens_count)
         
         return fig, final_output, head_attentions
     
-    def visualize_multi_head_patterns(self, head_attentions, tokens):
+    def visualize_multi_head_patterns(self, head_attentions, tokens, real_tokens_count=None):
         """Visualiza padrões de atenção de diferentes cabeças"""
+        # Determinar o número de tokens reais se não fornecido
+        if real_tokens_count is None:
+            real_tokens_count = len([t for t in tokens if t])
+            
+        # Usar apenas tokens reais para visualização
+        real_tokens = tokens[:real_tokens_count]
+        
         # Determinar o layout da figura com base no número de cabeças
         if self.num_heads <= 4:
             nrows, ncols = 1, self.num_heads
@@ -587,12 +682,15 @@ class MultiHeadAttention:
         
         for i in range(self.num_heads):
             if i < len(axes):
-                im = axes[i].imshow(head_attentions[i], cmap='YlOrRd', aspect='auto')
+                # Extrair apenas a parte relevante da matriz de atenção (tokens reais)
+                attention_display = head_attentions[i][:real_tokens_count, :real_tokens_count]
+                
+                im = axes[i].imshow(attention_display, cmap='YlOrRd', aspect='auto')
                 axes[i].set_title(f'Cabeça {i+1}')
-                axes[i].set_xticks(range(self.seq_length))
-                axes[i].set_yticks(range(self.seq_length))
-                axes[i].set_xticklabels(tokens, rotation=45, fontsize=8)
-                axes[i].set_yticklabels(tokens, fontsize=8)
+                axes[i].set_xticks(range(real_tokens_count))
+                axes[i].set_yticks(range(real_tokens_count))
+                axes[i].set_xticklabels(real_tokens, rotation=45, fontsize=8)
+                axes[i].set_yticklabels(real_tokens, fontsize=8)
                 plt.colorbar(im, ax=axes[i])
         
         # Ocultar eixos não utilizados
@@ -632,18 +730,18 @@ def main():
     
     if use_example:
         # Frases de exemplo
-        sentence1 = "O gato de botas caminha pela floresta com calma"
-        sentence2 = "A galinha bota ovos no galinheiro na fazenda calma"
+        sentence1 = "O gato de botas caminha pela floresta"
+        sentence2 = "A galinha bota ovos no galinheiro"
         
         st.markdown("""
         <div class="comparison-container">
             <div class="comparison-card">
                 <h4>Frase 1:</h4>
-                <p>O gato de botas caminha pela floresta com calma</p>
+                <p>O gato de botas caminha pela floresta</p>
             </div>
             <div class="comparison-card">
                 <h4>Frase 2:</h4>
-                <p>A galinha bota ovos no galinheiro na fazenda calma</p>
+                <p>A galinha bota ovos no galinheiro</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -740,11 +838,11 @@ def main():
     tab1, tab2 = st.tabs(["Frase 1", "Frase 2"])
     
     with tab1:
-        fig1, embeddings1, tokens_used1 = simulator.visualize_embeddings_and_positional(tokens1)
+        fig1, embeddings1, tokens_used1, real_tokens_count1 = simulator.visualize_embeddings_and_positional(tokens1)
         st.pyplot(fig1)
     
     with tab2:
-        fig2, embeddings2, tokens_used2 = simulator.visualize_embeddings_and_positional(tokens2)
+        fig2, embeddings2, tokens_used2, real_tokens_count2 = simulator.visualize_embeddings_and_positional(tokens2)
         st.pyplot(fig2)
     
     st.markdown("""
@@ -756,6 +854,7 @@ def main():
             <li><b>Embeddings Finais</b>: Combinação dos embeddings de token com o encoding posicional.</li>
             <li><b>Padrões Sinusoidais</b>: Visualização das funções seno/cosseno usadas no encoding posicional.</li>
         </ol>
+        <p>Nota: As linhas tracejadas verticais separam os tokens reais dos tokens de padding.</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -790,7 +889,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        fig_qkv1, fig_scores1, fig_output1, Q1, K1, V1, attention_weights1, output1 = simulator.compute_attention_step_by_step(embeddings1, tokens_used1)
+        fig_qkv1, fig_scores1, fig_output1, Q1, K1, V1, attention_weights1, output1 = simulator.compute_attention_step_by_step(embeddings1, tokens_used1, real_tokens_count1)
         st.pyplot(fig_qkv1)
         
         # Passo 2 e 3: Calcular Scores e Aplicar Softmax
@@ -831,11 +930,11 @@ def main():
         # Seletor para o token a ser analisado
         token_to_analyze1 = st.slider("Selecione o token para analisar (Frase 1)", 
                                      min_value=2, 
-                                     max_value=min(len(tokens_used1)-1, 9), 
-                                     value=3,
+                                     max_value=min(real_tokens_count1-1, 9), 
+                                     value=min(3, real_tokens_count1-1),
                                      help="Escolha um token para visualizar como ele presta atenção aos tokens anteriores")
         
-        flow_fig1 = simulator.visualize_attention_flow(attention_weights1, tokens_used1, token_to_analyze1)
+        flow_fig1 = simulator.visualize_attention_flow(attention_weights1, tokens_used1, token_to_analyze1, real_tokens_count1)
         st.pyplot(flow_fig1)
     
     with tab2:
@@ -854,7 +953,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        fig_qkv2, fig_scores2, fig_output2, Q2, K2, V2, attention_weights2, output2 = simulator.compute_attention_step_by_step(embeddings2, tokens_used2)
+        fig_qkv2, fig_scores2, fig_output2, Q2, K2, V2, attention_weights2, output2 = simulator.compute_attention_step_by_step(embeddings2, tokens_used2, real_tokens_count2)
         st.pyplot(fig_qkv2)
         
         # Passo 2 e 3: Calcular Scores e Aplicar Softmax
@@ -895,11 +994,11 @@ def main():
         # Seletor para o token a ser analisado
         token_to_analyze2 = st.slider("Selecione o token para analisar (Frase 2)", 
                                      min_value=2, 
-                                     max_value=min(len(tokens_used2)-1, 9), 
-                                     value=3,
+                                     max_value=min(real_tokens_count2-1, 9), 
+                                     value=min(3, real_tokens_count2-1),
                                      help="Escolha um token para visualizar como ele presta atenção aos tokens anteriores")
         
-        flow_fig2 = simulator.visualize_attention_flow(attention_weights2, tokens_used2, token_to_analyze2)
+        flow_fig2 = simulator.visualize_attention_flow(attention_weights2, tokens_used2, token_to_analyze2, real_tokens_count2)
         st.pyplot(flow_fig2)
     
     st.markdown("---")
@@ -922,17 +1021,20 @@ def main():
         
         with col1:
             st.subheader("Frase 1")
-            fig_patterns1 = simulator.analyze_attention_patterns(attention_weights1, tokens_used1)
+            fig_patterns1 = simulator.analyze_attention_patterns(attention_weights1, tokens_used1, real_tokens_count1)
             st.pyplot(fig_patterns1)
         
         with col2:
             st.subheader("Frase 2")
-            fig_patterns2 = simulator.analyze_attention_patterns(attention_weights2, tokens_used2)
+            fig_patterns2 = simulator.analyze_attention_patterns(attention_weights2, tokens_used2, real_tokens_count2)
             st.pyplot(fig_patterns2)
     
     with tab2:
         st.subheader("Comparação Direta dos Padrões de Atenção")
-        fig_comparison = simulator.compare_attention_patterns(attention_weights1, tokens_used1, attention_weights2, tokens_used2)
+        fig_comparison = simulator.compare_attention_patterns(
+            attention_weights1, tokens_used1, real_tokens_count1, 
+            attention_weights2, tokens_used2, real_tokens_count2
+        )
         st.pyplot(fig_comparison)
         
         st.markdown("""
@@ -965,7 +1067,9 @@ def main():
     tab1, tab2 = st.tabs(["Frase 1", "Frase 2"])
     
     with tab1:
-        fig_mha1, final_output1, head_attentions1 = mha.compute_multi_head_attention(embeddings1, tokens_used1)
+        fig_mha1, final_output1, head_attentions1 = mha.compute_multi_head_attention(
+            embeddings1, tokens_used1, real_tokens_count1
+        )
         
         st.markdown(f"""
         <div class="explanation">
@@ -981,7 +1085,9 @@ def main():
         st.pyplot(fig_mha1)
     
     with tab2:
-        fig_mha2, final_output2, head_attentions2 = mha.compute_multi_head_attention(embeddings2, tokens_used2)
+        fig_mha2, final_output2, head_attentions2 = mha.compute_multi_head_attention(
+            embeddings2, tokens_used2, real_tokens_count2
+        )
         
         st.markdown(f"""
         <div class="explanation">
@@ -1031,3 +1137,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
