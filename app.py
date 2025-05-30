@@ -214,8 +214,10 @@ with st.sidebar:
         st.warning(f"⚠️ Para evitar erros, o número de cabeças deve ser um divisor de d_model ({d_model}).")
         valid_heads = [h for h in range(1, 13) if d_model % h == 0]
         st.info(f"✅ Valores válidos para número de cabeças: {', '.join(map(str, valid_heads))}")
-        num_heads = max([h for h in valid_heads if h <= num_heads], default=8)
-        st.success(f"🔧 Ajustado para {num_heads} cabeças.")
+        # Escolher o valor válido mais próximo
+        if num_heads not in valid_heads:
+            num_heads = max([h for h in valid_heads if h <= num_heads], default=valid_heads[0])
+            st.success(f"🔧 Ajustado para {num_heads} cabeças.")
     
     # Fixar comprimento da sequência em 10 conforme solicitado
     seq_length = 10
@@ -772,8 +774,9 @@ class MultiHeadAttention:
         self.W_k_heads = [np.random.randn(d_model, self.d_k) * 0.1 for _ in range(num_heads)]
         self.W_v_heads = [np.random.randn(d_model, self.d_k) * 0.1 for _ in range(num_heads)]
         
-        # Projeção final
-        self.W_o = np.random.randn(d_model, d_model) * 0.1
+        # Projeção final - dimensão correta após concatenação
+        concat_dim = num_heads * self.d_k  # Dimensão após concatenar todas as cabeças
+        self.W_o = np.random.randn(concat_dim, d_model) * 0.1
     
     def single_head_attention(self, X, W_q, W_k, W_v):
         """Computa atenção para uma única cabeça"""
@@ -806,6 +809,16 @@ class MultiHeadAttention:
         
         # Concatenar outputs das cabeças
         concatenated = np.concatenate(head_outputs, axis=-1)
+        
+        # Debug: verificar dimensões
+        concat_dim = concatenated.shape[-1]
+        expected_dim = self.num_heads * self.d_k
+        
+        if concat_dim != expected_dim:
+            st.warning(f"⚠️ Dimensão inesperada: {concat_dim} vs {expected_dim}")
+            # Ajustar W_o se necessário
+            if self.W_o.shape[0] != concat_dim:
+                self.W_o = np.random.randn(concat_dim, self.d_model) * 0.1
         
         # Projeção final
         final_output = concatenated @ self.W_o
@@ -1412,6 +1425,7 @@ def main():
                 <li>🧠 Número de cabeças: <b>{num_heads}</b></li>
                 <li>📏 Dimensão por cabeça (d_k): <b>{d_model // num_heads}</b></li>
                 <li>🎯 Dimensão total do modelo (d_model): <b>{d_model}</b></li>
+                <li>🔗 Dimensão após concatenação: <b>{num_heads * (d_model // num_heads)}</b></li>
             </ul>
             <p>💡 <b>Observe:</b> Cada cabeça captura padrões únicos - algumas focam em posições próximas, outras em relações específicas!</p>
         </div>
