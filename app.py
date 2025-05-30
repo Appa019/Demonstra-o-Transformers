@@ -894,35 +894,39 @@ def main():
     <div class="llm-explanation">
         <h3>Fundamentos dos Modelos de Linguagem</h3>
         <p><strong>Large Language Models (LLMs)</strong> como GPT, BERT e outros são redes neurais gigantescas treinadas em vastos conjuntos de texto para entender e gerar linguagem humana. Eles funcionam através de:</p>
-        
-        <h4>1. Tokenização e Embeddings</h4>
-        <ul>
-            <li><strong>Tokenização:</strong> O texto é dividido em unidades menores (tokens) - palavras, subpalavras ou caracteres</li>
-            <li><strong>Embeddings:</strong> Cada token é convertido em um vetor numérico denso que captura seu significado semântico</li>
-            <li><strong>Positional Encoding:</strong> Como os Transformers processam todos os tokens simultaneamente, precisamos adicionar informação sobre a posição de cada palavra</li>
-        </ul>
-        
-        <h4>2. Mecanismo de Attention</h4>
-        <ul>
-            <li><strong>Self-Attention:</strong> Cada token "presta atenção" a todos os outros tokens da sequência</li>
-            <li><strong>Context Understanding:</strong> Isso permite que o modelo entenda como palavras se relacionam, mesmo estando distantes na frase</li>
-            <li><strong>Múltiplas Cabeças:</strong> Diferentes "cabeças de atenção" capturam diferentes tipos de relações (sintáticas, semânticas, etc.)</li>
-        </ul>
-        
-        <h4>3. Processamento em Camadas</h4>
-        <ul>
-            <li><strong>Múltiplas Camadas:</strong> Os LLMs têm dezenas ou centenas de camadas Transformer empilhadas</li>
-            <li><strong>Representações Hierárquicas:</strong> Cada camada constrói representações mais complexas baseadas na anterior</li>
-            <li><strong>Emergência:</strong> Comportamentos complexos emergem da interação entre essas camadas simples</li>
-        </ul>
-        
-        <h4>4. Treinamento e Previsão</h4>
-        <ul>
-            <li><strong>Previsão de Próxima Palavra:</strong> Durante o treinamento, o modelo aprende a prever a próxima palavra em uma sequência</li>
-            <li><strong>Aprendizado de Padrões:</strong> Isso força o modelo a aprender gramática, semântica, fatos sobre o mundo, e muito mais</li>
-            <li><strong>Transferência:</strong> Uma vez treinado, o modelo pode ser adaptado para diversas tarefas específicas</li>
-        </ul>
-        
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("#### 1. Tokenização e Embeddings")
+    st.markdown("""
+    - **Tokenização:** O texto é dividido em unidades menores (tokens) - palavras, subpalavras ou caracteres
+    - **Embeddings:** Cada token é convertido em um vetor numérico denso que captura seu significado semântico
+    - **Positional Encoding:** Como os Transformers processam todos os tokens simultaneamente, precisamos adicionar informação sobre a posição de cada palavra
+    """)
+    
+    st.markdown("#### 2. Mecanismo de Attention")
+    st.markdown("""
+    - **Self-Attention:** Cada token "presta atenção" a todos os outros tokens da sequência
+    - **Context Understanding:** Isso permite que o modelo entenda como palavras se relacionam, mesmo estando distantes na frase
+    - **Múltiplas Cabeças:** Diferentes "cabeças de atenção" capturam diferentes tipos de relações (sintáticas, semânticas, etc.)
+    """)
+    
+    st.markdown("#### 3. Processamento em Camadas")
+    st.markdown("""
+    - **Múltiplas Camadas:** Os LLMs têm dezenas ou centenas de camadas Transformer empilhadas
+    - **Representações Hierárquicas:** Cada camada constrói representações mais complexas baseadas na anterior
+    - **Emergência:** Comportamentos complexos emergem da interação entre essas camadas simples
+    """)
+    
+    st.markdown("#### 4. Treinamento e Previsão")
+    st.markdown("""
+    - **Previsão de Próxima Palavra:** Durante o treinamento, o modelo aprende a prever a próxima palavra em uma sequência
+    - **Aprendizado de Padrões:** Isso força o modelo a aprender gramática, semântica, fatos sobre o mundo, e muito mais
+    - **Transferência:** Uma vez treinado, o modelo pode ser adaptado para diversas tarefas específicas
+    """)
+    
+    st.markdown("""
+    <div class="llm-explanation">
         <p><strong>O resultado:</strong> Um modelo capaz de entender contexto, gerar texto coerente, responder perguntas, traduzir idiomas e muito mais!</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1502,15 +1506,23 @@ def main():
     <div class="highlight">
         <h3>🌟 O Impacto dos Transformers</h3>
         <p>Esta arquitetura revolucionou não apenas o NLP, mas toda a IA:</p>
-        
-        <ul>
-            <li><strong>🗣️ Processamento de Linguagem:</strong> BERT, GPT, T5, ChatGPT, Claude</li>
-            <li><strong>🖼️ Visão Computacional:</strong> Vision Transformer (ViT), DALL-E</li>
-            <li><strong>🎵 Áudio:</strong> Whisper, MusicLM</li>
-            <li><strong>🧬 Ciências:</strong> AlphaFold, modelos de proteínas</li>
-            <li><strong>🤖 IA Geral:</strong> Modelos multimodais como GPT-4V</li>
-        </ul>
-        
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    **🗣️ Processamento de Linguagem:** BERT, GPT, T5, ChatGPT, Claude
+    
+    **🖼️ Visão Computacional:** Vision Transformer (ViT), DALL-E
+    
+    **🎵 Áudio:** Whisper, MusicLM
+    
+    **🧬 Ciências:** AlphaFold, modelos de proteínas
+    
+    **🤖 IA Geral:** Modelos multimodais como GPT-4V
+    """)
+    
+    st.markdown("""
+    <div class="highlight">
         <p><strong>🎯 A chave do sucesso:</strong> A capacidade de capturar relações complexas através de um mecanismo 
         elegante e paralelizável que escala com dados e computação!</p>
     </div>
