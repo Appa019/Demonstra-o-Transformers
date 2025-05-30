@@ -196,8 +196,8 @@ def calculate_token_importance(attention_weights, tokens, real_tokens_count):
 with st.sidebar:
     st.header("⚙️ Parâmetros do Modelo")
     
-    # Fixar dimensão do modelo em 120 conforme solicitado
-    d_model = 120
+    # Fixar dimensão do modelo em 40 conforme solicitado
+    d_model = 40
     st.info(f"📏 Dimensão do Modelo (d_model): {d_model}")
     
     num_heads = st.slider(
@@ -893,37 +893,37 @@ def main():
     st.markdown("""
     <div class="llm-explanation">
         <h3>Fundamentos dos Modelos de Linguagem</h3>
-        <p><b>Large Language Models (LLMs)</b> como GPT, BERT e outros são redes neurais gigantescas treinadas em vastos conjuntos de texto para entender e gerar linguagem humana. Eles funcionam através de:</p>
+        <p><strong>Large Language Models (LLMs)</strong> como GPT, BERT e outros são redes neurais gigantescas treinadas em vastos conjuntos de texto para entender e gerar linguagem humana. Eles funcionam através de:</p>
         
         <h4>1. Tokenização e Embeddings</h4>
         <ul>
-            <li><b>Tokenização</b>: O texto é dividido em unidades menores (tokens) - palavras, subpalavras ou caracteres</li>
-            <li><b>Embeddings</b>: Cada token é convertido em um vetor numérico denso que captura seu significado semântico</li>
-            <li><b>Positional Encoding</b>: Como os Transformers processam todos os tokens simultaneamente, precisamos adicionar informação sobre a posição de cada palavra</li>
+            <li><strong>Tokenização:</strong> O texto é dividido em unidades menores (tokens) - palavras, subpalavras ou caracteres</li>
+            <li><strong>Embeddings:</strong> Cada token é convertido em um vetor numérico denso que captura seu significado semântico</li>
+            <li><strong>Positional Encoding:</strong> Como os Transformers processam todos os tokens simultaneamente, precisamos adicionar informação sobre a posição de cada palavra</li>
         </ul>
         
         <h4>2. Mecanismo de Attention</h4>
         <ul>
-            <li><b>Self-Attention</b>: Cada token "presta atenção" a todos os outros tokens da sequência</li>
-            <li><b>Context Understanding</b>: Isso permite que o modelo entenda como palavras se relacionam, mesmo estando distantes na frase</li>
-            <li><b>Múltiplas Cabeças</b>: Diferentes "cabeças de atenção" capturam diferentes tipos de relações (sintáticas, semânticas, etc.)</li>
+            <li><strong>Self-Attention:</strong> Cada token "presta atenção" a todos os outros tokens da sequência</li>
+            <li><strong>Context Understanding:</strong> Isso permite que o modelo entenda como palavras se relacionam, mesmo estando distantes na frase</li>
+            <li><strong>Múltiplas Cabeças:</strong> Diferentes "cabeças de atenção" capturam diferentes tipos de relações (sintáticas, semânticas, etc.)</li>
         </ul>
         
         <h4>3. Processamento em Camadas</h4>
         <ul>
-            <li><b>Múltiplas Camadas</b>: Os LLMs têm dezenas ou centenas de camadas Transformer empilhadas</li>
-            <li><b>Representações Hierárquicas</b>: Cada camada constrói representações mais complexas baseadas na anterior</li>
-            <li><b>Emergência</b>: Comportamentos complexos emergem da interação entre essas camadas simples</li>
+            <li><strong>Múltiplas Camadas:</strong> Os LLMs têm dezenas ou centenas de camadas Transformer empilhadas</li>
+            <li><strong>Representações Hierárquicas:</strong> Cada camada constrói representações mais complexas baseadas na anterior</li>
+            <li><strong>Emergência:</strong> Comportamentos complexos emergem da interação entre essas camadas simples</li>
         </ul>
         
         <h4>4. Treinamento e Previsão</h4>
         <ul>
-            <li><b>Previsão de Próxima Palavra</b>: Durante o treinamento, o modelo aprende a prever a próxima palavra em uma sequência</li>
-            <li><b>Aprendizado de Padrões</b>: Isso força o modelo a aprender gramática, semântica, fatos sobre o mundo, e muito mais</li>
-            <li><b>Transferência</b>: Uma vez treinado, o modelo pode ser adaptado para diversas tarefas específicas</li>
+            <li><strong>Previsão de Próxima Palavra:</strong> Durante o treinamento, o modelo aprende a prever a próxima palavra em uma sequência</li>
+            <li><strong>Aprendizado de Padrões:</strong> Isso força o modelo a aprender gramática, semântica, fatos sobre o mundo, e muito mais</li>
+            <li><strong>Transferência:</strong> Uma vez treinado, o modelo pode ser adaptado para diversas tarefas específicas</li>
         </ul>
         
-        <p><b>O resultado:</b> Um modelo capaz de entender contexto, gerar texto coerente, responder perguntas, traduzir idiomas e muito mais!</p>
+        <p><strong>O resultado:</strong> Um modelo capaz de entender contexto, gerar texto coerente, responder perguntas, traduzir idiomas e muito mais!</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -996,7 +996,7 @@ def main():
                             st.session_state['generated_sentence2'] = sentence2
                             
                             st.success("✅ Frases geradas com sucesso!")
-                            st.experimental_rerun()
+                            st.rerun()
                         else:
                             st.error("❌ Não foi possível obter duas frases distintas da API.")
                     
@@ -1013,7 +1013,7 @@ def main():
             if st.button("🔄 Usar Frases de Exemplo"):
                 del st.session_state['generated_sentence1']
                 del st.session_state['generated_sentence2']
-                st.experimental_rerun()
+                st.rerun()
     
     elif not use_example and not api_key:
         st.warning("⚠️ Insira sua chave da API OpenAI no painel lateral para gerar frases personalizadas.")
