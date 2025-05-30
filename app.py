@@ -60,6 +60,13 @@ st.markdown("""
         border-radius: 5px;
         margin-bottom: 15px;
     }
+    .llm-explanation {
+        background-color: #e8f5e8;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #28a745;
+        margin-bottom: 20px;
+    }
     .api-key-input {
         background-color: #f8f9fa;
         padding: 15px;
@@ -87,6 +94,13 @@ st.markdown("""
         border-left: 5px solid #ffc107;
         margin-bottom: 15px;
     }
+    .importance-analysis {
+        background-color: #f3e5f5;
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 5px solid #9c27b0;
+        margin-bottom: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,10 +115,10 @@ def generate_sentences_with_openai(api_key, prompt):
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Você é um assistente que gera frases para análise linguística."},
+                {"role": "system", "content": "Você é um assistente especializado em gerar frases para análise linguística de modelos de linguagem."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=100,
+            max_tokens=150,
             temperature=0.7
         )
         return response.choices[0].message.content.strip()
@@ -117,6 +131,23 @@ def tokenize_sentence(sentence):
     # Tokenização simples por espaço e pontuação
     tokens = re.findall(r'\b\w+\b|[.,!?;]', sentence.lower())
     return tokens[:10]  # Limitar a 10 tokens conforme solicitado
+
+# Função para calcular importância de tokens
+def calculate_token_importance(attention_weights, tokens, real_tokens_count):
+    """Calcula a importância de cada token baseada nos pesos de atenção"""
+    # Usar apenas tokens reais
+    real_attention = attention_weights[:real_tokens_count, :real_tokens_count]
+    
+    # Importância como soma dos pesos de atenção recebidos (quanto outros tokens prestam atenção a este)
+    importance_received = np.sum(real_attention, axis=0)
+    
+    # Importância como soma dos pesos de atenção dados (quanto este token presta atenção aos outros)
+    importance_given = np.sum(real_attention, axis=1)
+    
+    # Importância combinada (média das duas métricas normalizadas)
+    importance_combined = (importance_received + importance_given) / 2
+    
+    return importance_received, importance_given, importance_combined
 
 # Sidebar para controles
 with st.sidebar:
@@ -161,7 +192,7 @@ with st.sidebar:
     st.markdown("""
     Esta aplicação demonstra o funcionamento do mecanismo de Attention em arquiteturas Transformer.
     
-    Agora com integração à API OpenAI para gerar frases comparativas e analisar como o mecanismo de atenção processa diferentes contextos.
+    Agora com integração à API OpenAI para gerar frases comparativas e análise de importância de tokens.
     
     Desenvolvido com Streamlit e Matplotlib.
     """)
@@ -489,6 +520,70 @@ class TransformerSimulator:
         
         return fig
     
+    def compare_token_importance(self, attention_weights1, tokens1, real_tokens_count1,
+                                attention_weights2, tokens2, real_tokens_count2):
+        """Compara a importância de tokens entre duas frases"""
+        # Calcular importâncias para ambas as frases
+        imp_rec1, imp_giv1, imp_comb1 = calculate_token_importance(attention_weights1, tokens1, real_tokens_count1)
+        imp_rec2, imp_giv2, imp_comb2 = calculate_token_importance(attention_weights2, tokens2, real_tokens_count2)
+        
+        # Criar figura com subplots
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # Tokens reais apenas
+        real_tokens1 = tokens1[:real_tokens_count1]
+        real_tokens2 = tokens2[:real_tokens_count2]
+        
+        # Gráfico 1: Importância Recebida (quanto outros tokens prestam atenção)
+        x1 = np.arange(len(real_tokens1))
+        x2 = np.arange(len(real_tokens2))
+        
+        bars1 = axes[0,0].bar(x1, imp_rec1, alpha=0.7, color='lightblue', label='Frase 1')
+        axes[0,0].set_title('Importância Recebida (Attention IN)')
+        axes[0,0].set_xlabel('Tokens')
+        axes[0,0].set_ylabel('Soma dos Pesos de Atenção Recebidos')
+        axes[0,0].set_xticks(x1)
+        axes[0,0].set_xticklabels(real_tokens1, rotation=45)
+        
+        # Adicionar valores nas barras
+        for i, v in enumerate(imp_rec1):
+            axes[0,0].text(i, v + 0.05, f'{v:.2f}', ha='center', va='bottom', fontsize=8)
+        
+        bars2 = axes[0,1].bar(x2, imp_rec2, alpha=0.7, color='lightcoral', label='Frase 2')
+        axes[0,1].set_title('Importância Recebida (Attention IN)')
+        axes[0,1].set_xlabel('Tokens')
+        axes[0,1].set_ylabel('Soma dos Pesos de Atenção Recebidos')
+        axes[0,1].set_xticks(x2)
+        axes[0,1].set_xticklabels(real_tokens2, rotation=45)
+        
+        for i, v in enumerate(imp_rec2):
+            axes[0,1].text(i, v + 0.05, f'{v:.2f}', ha='center', va='bottom', fontsize=8)
+        
+        # Gráfico 2: Importância Dada (quanto este token presta atenção aos outros)
+        bars3 = axes[1,0].bar(x1, imp_giv1, alpha=0.7, color='lightgreen')
+        axes[1,0].set_title('Importância Dada (Attention OUT)')
+        axes[1,0].set_xlabel('Tokens')
+        axes[1,0].set_ylabel('Soma dos Pesos de Atenção Dados')
+        axes[1,0].set_xticks(x1)
+        axes[1,0].set_xticklabels(real_tokens1, rotation=45)
+        
+        for i, v in enumerate(imp_giv1):
+            axes[1,0].text(i, v + 0.05, f'{v:.2f}', ha='center', va='bottom', fontsize=8)
+        
+        bars4 = axes[1,1].bar(x2, imp_giv2, alpha=0.7, color='gold')
+        axes[1,1].set_title('Importância Dada (Attention OUT)')
+        axes[1,1].set_xlabel('Tokens')
+        axes[1,1].set_ylabel('Soma dos Pesos de Atenção Dados')
+        axes[1,1].set_xticks(x2)
+        axes[1,1].set_xticklabels(real_tokens2, rotation=45)
+        
+        for i, v in enumerate(imp_giv2):
+            axes[1,1].text(i, v + 0.05, f'{v:.2f}', ha='center', va='bottom', fontsize=8)
+        
+        plt.tight_layout()
+        
+        return fig, (imp_rec1, imp_giv1, imp_comb1), (imp_rec2, imp_giv2, imp_comb2)
+    
     def analyze_attention_patterns(self, attention_weights, tokens, real_tokens_count=None):
         """Analisa padrões específicos de atenção"""
         # Determinar o número de tokens reais se não fornecido
@@ -704,24 +799,64 @@ class MultiHeadAttention:
 
 # Função principal
 def main():
-    # Introdução
+    # Introdução com explicação sobre LLMs
     st.markdown("""
     <div class="highlight">
         <h2>Entendendo o Mecanismo de Attention em Transformers</h2>
         <p>Esta aplicação demonstra visualmente como funciona o mecanismo de Attention, 
         componente fundamental das arquiteturas Transformer que revolucionaram o Processamento 
         de Linguagem Natural e outras áreas de IA.</p>
-        <p>Agora com suporte para comparação de duas frases geradas pela API OpenAI!</p>
+        <p>Agora com análise de importância de tokens e comparação detalhada entre frases!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Seção explicativa sobre LLMs
+    st.header("🧠 Como Funcionam os Large Language Models (LLMs)")
+    
+    st.markdown("""
+    <div class="llm-explanation">
+        <h3>Fundamentos dos Modelos de Linguagem</h3>
+        <p><b>Large Language Models (LLMs)</b> como GPT, BERT e outros são redes neurais gigantescas treinadas em vastos conjuntos de texto para entender e gerar linguagem humana. Eles funcionam através de:</p>
+        
+        <h4>1. Tokenização e Embeddings</h4>
+        <ul>
+            <li><b>Tokenização</b>: O texto é dividido em unidades menores (tokens) - palavras, subpalavras ou caracteres</li>
+            <li><b>Embeddings</b>: Cada token é convertido em um vetor numérico denso que captura seu significado semântico</li>
+            <li><b>Positional Encoding</b>: Como os Transformers processam todos os tokens simultaneamente, precisamos adicionar informação sobre a posição de cada palavra</li>
+        </ul>
+        
+        <h4>2. Mecanismo de Attention</h4>
+        <ul>
+            <li><b>Self-Attention</b>: Cada token "presta atenção" a todos os outros tokens da sequência</li>
+            <li><b>Context Understanding</b>: Isso permite que o modelo entenda como palavras se relacionam, mesmo estando distantes na frase</li>
+            <li><b>Múltiplas Cabeças</b>: Diferentes "cabeças de atenção" capturam diferentes tipos de relações (sintáticas, semânticas, etc.)</li>
+        </ul>
+        
+        <h4>3. Processamento em Camadas</h4>
+        <ul>
+            <li><b>Múltiplas Camadas</b>: Os LLMs têm dezenas ou centenas de camadas Transformer empilhadas</li>
+            <li><b>Representações Hierárquicas</b>: Cada camada constrói representações mais complexas baseadas na anterior</li>
+            <li><b>Emergência</b>: Comportamentos complexos emergem da interação entre essas camadas simples</li>
+        </ul>
+        
+        <h4>4. Treinamento e Previsão</h4>
+        <ul>
+            <li><b>Previsão de Próxima Palavra</b>: Durante o treinamento, o modelo aprende a prever a próxima palavra em uma sequência</li>
+            <li><b>Aprendizado de Padrões</b>: Isso força o modelo a aprender gramática, semântica, fatos sobre o mundo, e muito mais</li>
+            <li><b>Transferência</b>: Uma vez treinado, o modelo pode ser adaptado para diversas tarefas específicas</li>
+        </ul>
+        
+        <p><b>O resultado:</b> Um modelo capaz de entender contexto, gerar texto coerente, responder perguntas, traduzir idiomas e muito mais!</p>
     </div>
     """, unsafe_allow_html=True)
     
     # Seção para geração de frases com OpenAI
-    st.header("Geração de Frases para Comparação")
+    st.header("📝 Geração de Frases para Comparação")
     
     st.markdown("""
     <div class="explanation">
-        <p>Insira sua chave da API OpenAI no painel lateral para gerar duas frases comparativas. 
-        Estas frases serão usadas para demonstrar como o mecanismo de atenção processa diferentes contextos.</p>
+        <p>Utilizaremos duas frases para demonstrar como o mecanismo de atenção processa diferentes contextos. 
+        Você pode usar frases de exemplo ou gerar novas frases com palavras similares usando a API OpenAI.</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -729,19 +864,19 @@ def main():
     use_example = st.checkbox("Usar frases de exemplo (sem API OpenAI)", value=not bool(api_key))
     
     if use_example:
-        # Frases de exemplo
-        sentence1 = "O gato de botas caminha pela floresta"
-        sentence2 = "A galinha bota ovos no galinheiro"
+        # Frases de exemplo com exatamente 10 palavras
+        sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
+        sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
         
-        st.markdown("""
+        st.markdown(f"""
         <div class="comparison-container">
             <div class="comparison-card">
-                <h4>Frase 1:</h4>
-                <p>O gato de botas caminha pela floresta</p>
+                <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
+                <p>{sentence1}</p>
             </div>
             <div class="comparison-card">
-                <h4>Frase 2:</h4>
-                <p>A galinha bota ovos no galinheiro</p>
+                <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
+                <p>{sentence2}</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -750,22 +885,42 @@ def main():
             # Botão para gerar frases
             if st.button("Gerar Frases Comparativas"):
                 with st.spinner("Gerando frases com a API OpenAI..."):
-                    # Prompt para gerar frases comparativas
+                    # Prompt melhorado para gerar frases com palavras similares
                     prompt = """
-                    Gere duas frases em português que contenham palavras homônimas (mesma grafia, significados diferentes).
-                    Por exemplo, palavras como "gato" (animal) e "bota" (calçado) versus "bota" (verbo botar).
-                    Forneça apenas as duas frases, sem explicações adicionais.
-                    Cada frase deve ter no máximo 10 palavras.
+                    Gere duas frases em português que atendam aos seguintes critérios:
+                    
+                    1. Cada frase deve ter EXATAMENTE 10 palavras (incluindo artigos, preposições, etc.)
+                    2. As frases devem compartilhar pelo menos 2-3 palavras similares ou relacionadas
+                    3. As palavras similares devem ter significados ou usos diferentes nos dois contextos
+                    4. Use vocabulário simples e claro
+                    5. Evite pontuação complexa
+                    
+                    Exemplos do que procuro:
+                    - Palavras como "banco" (móvel vs instituição financeira)
+                    - Palavras como "manga" (fruta vs parte da roupa)
+                    - Palavras como "casa" em contextos diferentes
+                    
+                    Forneça apenas as duas frases, uma por linha, sem numeração ou explicações.
                     """
                     
                     result = generate_sentences_with_openai(api_key, prompt)
                     
                     if result:
                         # Dividir o resultado em duas frases
-                        sentences = result.split('\n')
+                        sentences = [s.strip() for s in result.split('\n') if s.strip()]
                         if len(sentences) >= 2:
-                            sentence1 = sentences[0].strip()
-                            sentence2 = sentences[1].strip()
+                            sentence1 = sentences[0].rstrip('.')
+                            sentence2 = sentences[1].rstrip('.')
+                            
+                            # Verificar se as frases têm aproximadamente 10 palavras
+                            words1 = len(sentence1.split())
+                            words2 = len(sentence2.split())
+                            
+                            # Ajustar se necessário (adicionar ponto final se não houver 10 palavras)
+                            if words1 < 10:
+                                sentence1 += "."
+                            if words2 < 10:
+                                sentence2 += "."
                             
                             st.session_state['sentence1'] = sentence1
                             st.session_state['sentence2'] = sentence2
@@ -773,11 +928,11 @@ def main():
                             st.markdown(f"""
                             <div class="comparison-container">
                                 <div class="comparison-card">
-                                    <h4>Frase 1:</h4>
+                                    <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
                                     <p>{sentence1}</p>
                                 </div>
                                 <div class="comparison-card">
-                                    <h4>Frase 2:</h4>
+                                    <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
                                     <p>{sentence2}</p>
                                 </div>
                             </div>
@@ -792,11 +947,11 @@ def main():
                 st.markdown(f"""
                 <div class="comparison-container">
                     <div class="comparison-card">
-                        <h4>Frase 1:</h4>
+                        <h4>Frase 1 ({len(sentence1.split())} palavras):</h4>
                         <p>{sentence1}</p>
                     </div>
                     <div class="comparison-card">
-                        <h4>Frase 2:</h4>
+                        <h4>Frase 2 ({len(sentence2.split())} palavras):</h4>
                         <p>{sentence2}</p>
                     </div>
                 </div>
@@ -805,14 +960,14 @@ def main():
                 # Mensagem para clicar no botão
                 st.info("Clique no botão 'Gerar Frases Comparativas' para obter frases da API OpenAI.")
                 # Usar frases de exemplo como fallback
-                sentence1 = "O gato de botas caminha pela floresta"
-                sentence2 = "A galinha bota ovos no galinheiro"
+                sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
+                sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
         else:
             # Mensagem para inserir a chave da API
             st.warning("Insira sua chave da API OpenAI no painel lateral ou use as frases de exemplo.")
             # Usar frases de exemplo como fallback
-            sentence1 = "O gato de botas caminha pela floresta"
-            sentence2 = "A galinha bota ovos no galinheiro"
+            sentence1 = "O gato de maria caminha devagar pela floresta verde escura."
+            sentence2 = "A galinha de fazenda bota ovos frescos no galinheiro."
     
     # Tokenizar as frases
     tokens1 = tokenize_sentence(sentence1)
@@ -824,7 +979,7 @@ def main():
     st.markdown("---")
     
     # Parte 1: Embeddings e Positional Encoding
-    st.header("1. Embeddings e Positional Encoding")
+    st.header("1. 🔢 Embeddings e Positional Encoding")
     
     st.markdown("""
     <div class="explanation">
@@ -849,24 +1004,24 @@ def main():
     <div class="explanation">
         <p><b>Explicação dos gráficos:</b></p>
         <ol>
-            <li><b>Token Embeddings</b>: Representação vetorial de cada palavra.</li>
-            <li><b>Positional Encoding</b>: Informação sobre a posição de cada token na sequência.</li>
-            <li><b>Embeddings Finais</b>: Combinação dos embeddings de token com o encoding posicional.</li>
-            <li><b>Padrões Sinusoidais</b>: Visualização das funções seno/cosseno usadas no encoding posicional.</li>
+            <li><b>Token Embeddings</b>: Representação vetorial de cada palavra aprendida durante o treinamento.</li>
+            <li><b>Positional Encoding</b>: Informação sobre a posição usando funções seno/cosseno para preservar ordem.</li>
+            <li><b>Embeddings Finais</b>: Combinação que permite ao modelo saber "o que" é cada palavra e "onde" ela está.</li>
+            <li><b>Padrões Sinusoidais</b>: As diferentes frequências permitem ao modelo distinguir posições próximas e distantes.</li>
         </ol>
-        <p>Nota: As linhas tracejadas verticais separam os tokens reais dos tokens de padding.</p>
+        <p>💡 <b>Dica</b>: As linhas tracejadas separam tokens reais dos tokens de padding (preenchimento).</p>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown("---")
     
     # Parte 2: Self-Attention Passo a Passo
-    st.header("2. Mecanismo de Self-Attention Passo a Passo")
+    st.header("2. 🔍 Mecanismo de Self-Attention Passo a Passo")
     
     st.markdown("""
     <div class="explanation">
-        <p>O mecanismo de <b>Self-Attention</b> permite que cada token "preste atenção" a todos os outros tokens da sequência, 
-        capturando relações de longo alcance. Vamos ver como isso funciona passo a passo:</p>
+        <p>O <b>Self-Attention</b> é o coração dos Transformers. Ele permite que cada palavra "converse" com todas as outras palavras da frase, 
+        capturando relações complexas independentemente da distância. Vamos ver cada passo:</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -879,13 +1034,13 @@ def main():
         
         st.markdown("""
         <div class="explanation">
-            <p>Para cada token, criamos três vetores diferentes:</p>
+            <p>Para cada token, criamos três representações diferentes:</p>
             <ul>
-                <li><b>Query (Q)</b>: O que o token está "perguntando" ou "procurando"</li>
-                <li><b>Key (K)</b>: O que o token está "oferecendo" ou "respondendo"</li>
-                <li><b>Value (V)</b>: A informação real que será agregada</li>
+                <li><b>Query (Q)</b>: "O que este token está procurando?" - determina que tipo de informação é relevante</li>
+                <li><b>Key (K)</b>: "Que informação este token oferece?" - representa o conteúdo disponível</li>
+                <li><b>Value (V)</b>: "Qual informação será realmente transmitida?" - o conteúdo efetivo a ser agregado</li>
             </ul>
-            <p>Estes vetores são criados através de transformações lineares (multiplicação por matrizes de peso) dos embeddings.</p>
+            <p>🔧 <b>Implementação</b>: Multiplicamos os embeddings por matrizes de peso treináveis (W_q, W_k, W_v).</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -897,8 +1052,10 @@ def main():
         
         st.markdown(f"""
         <div class="explanation">
-            <p><b>Passo 2:</b> Calculamos os "scores" de atenção multiplicando Q por K transposto e escalando pelo fator 1/√{d_model} = {1/np.sqrt(d_model):.3f}</p>
-            <p><b>Passo 3:</b> Aplicamos a função softmax para converter os scores em pesos de atenção que somam 1 para cada token.</p>
+            <p><b>Passo 2:</b> Calculamos a "compatibilidade" entre cada Query e cada Key através do produto escalar Q·K<sup>T</sup></p>
+            <p>📏 <b>Escalamento</b>: Dividimos por √{d_model} = {1/np.sqrt(d_model):.3f} para estabilizar os gradientes</p>
+            <p><b>Passo 3:</b> Aplicamos softmax para converter scores em probabilidades que somam 1</p>
+            <p>💡 <b>Intuição</b>: Quanto maior o score, mais "atenção" um token dará ao outro</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -909,8 +1066,9 @@ def main():
         
         st.markdown("""
         <div class="explanation">
-            <p>Finalmente, multiplicamos os pesos de atenção pela matriz V para obter a saída do mecanismo de atenção.
-            Cada token agora contém informação ponderada de todos os outros tokens da sequência.</p>
+            <p>Finalmente, usamos os pesos de atenção para fazer uma média ponderada dos Values.</p>
+            <p>🎭 <b>Resultado</b>: Cada token agora contém informação contextualizada de toda a sequência!</p>
+            <p>✨ <b>Magia</b>: O modelo aprendeu automaticamente quais palavras são importantes para cada contexto</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -921,9 +1079,9 @@ def main():
         
         st.markdown("""
         <div class="attention-flow">
-            <p>Uma característica fundamental do mecanismo de atenção é que <b>cada token considera o conjunto de tokens anteriores</b> 
-            para construir sua representação contextualizada. Isso permite que o modelo capture relações semânticas e sintáticas entre palavras.</p>
-            <p>O gráfico abaixo mostra como um token específico "presta atenção" aos tokens anteriores, com setas indicando as conexões mais fortes.</p>
+            <p><b>🧠 Como o modelo "pensa":</b> Cada token analisa todos os tokens anteriores para construir sua representação. 
+            As setas mostram as conexões mais fortes - onde o modelo está "prestando mais atenção".</p>
+            <p>🔍 <b>Experimente</b>: Mude o token selecionado para ver como diferentes palavras focam em aspectos diferentes da frase!</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -938,18 +1096,17 @@ def main():
         st.pyplot(flow_fig1)
     
     with tab2:
-        # Passo 1: Criar Q, K, V
+        # Mesmo processo para a segunda frase
         st.subheader("🔍 Passo 1: Criando Query, Key e Value matrices")
         
         st.markdown("""
         <div class="explanation">
-            <p>Para cada token, criamos três vetores diferentes:</p>
+            <p>Observe como os mesmos passos aplicados à segunda frase produzem padrões diferentes:</p>
             <ul>
-                <li><b>Query (Q)</b>: O que o token está "perguntando" ou "procurando"</li>
-                <li><b>Key (K)</b>: O que o token está "oferecendo" ou "respondendo"</li>
-                <li><b>Value (V)</b>: A informação real que será agregada</li>
+                <li><b>Query (Q)</b>: Cada token busca informações relevantes no contexto da segunda frase</li>
+                <li><b>Key (K)</b>: As "chaves" que cada token oferece dependem do vocabulário e contexto</li>
+                <li><b>Value (V)</b>: O conteúdo semântico varia conforme a estrutura da frase</li>
             </ul>
-            <p>Estes vetores são criados através de transformações lineares (multiplicação por matrizes de peso) dos embeddings.</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -961,8 +1118,9 @@ def main():
         
         st.markdown(f"""
         <div class="explanation">
-            <p><b>Passo 2:</b> Calculamos os "scores" de atenção multiplicando Q por K transposto e escalando pelo fator 1/√{d_model} = {1/np.sqrt(d_model):.3f}</p>
-            <p><b>Passo 3:</b> Aplicamos a função softmax para converter os scores em pesos de atenção que somam 1 para cada token.</p>
+            <p><b>Compare:</b> Note como os padrões de scores diferem da primeira frase</p>
+            <p>🎯 <b>Insight</b>: Palavras similares em contextos diferentes geram scores únicos</p>
+            <p>📊 <b>Softmax</b>: Normaliza os scores para que cada linha some exatamente 1.0</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -973,8 +1131,8 @@ def main():
         
         st.markdown("""
         <div class="explanation">
-            <p>Finalmente, multiplicamos os pesos de atenção pela matriz V para obter a saída do mecanismo de atenção.
-            Cada token agora contém informação ponderada de todos os outros tokens da sequência.</p>
+            <p>🔄 <b>Agregação contextual</b>: Cada posição recebe uma mistura ponderada de informações</p>
+            <p>🌟 <b>Emergência</b>: O significado final emerge da interação entre todos os tokens</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -985,9 +1143,8 @@ def main():
         
         st.markdown("""
         <div class="attention-flow">
-            <p>Uma característica fundamental do mecanismo de atenção é que <b>cada token considera o conjunto de tokens anteriores</b> 
-            para construir sua representação contextualizada. Isso permite que o modelo capture relações semânticas e sintáticas entre palavras.</p>
-            <p>O gráfico abaixo mostra como um token específico "presta atenção" aos tokens anteriores, com setas indicando as conexões mais fortes.</p>
+            <p><b>🔬 Análise comparativa:</b> Compare os padrões de atenção entre as duas frases. 
+            Palavras em posições similares podem ter comportamentos muito diferentes!</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1003,13 +1160,131 @@ def main():
     
     st.markdown("---")
     
-    # Parte 3: Análise Comparativa de Padrões de Atenção
-    st.header("3. Análise Comparativa de Padrões de Atenção")
+    # Parte 3: Análise de Importância de Tokens
+    st.header("3. ⚖️ Análise de Importância de Tokens")
+    
+    st.markdown("""
+    <div class="importance-analysis">
+        <h3>🎯 Como Medimos a Importância de um Token?</h3>
+        <p>Analisamos dois aspectos fundamentais do comportamento de atenção:</p>
+        <ul>
+            <li><b>Importância Recebida (Attention IN)</b>: Quanto outros tokens prestam atenção a este token
+                <br>➡️ <i>Indica quão "central" ou "importante" uma palavra é para o contexto geral</i></li>
+            <li><b>Importância Dada (Attention OUT)</b>: Quanto este token presta atenção aos outros
+                <br>➡️ <i>Indica quão "ativo" um token é em buscar informações contextuais</i></li>
+        </ul>
+        <p>🧮 <b>Cálculo</b>: Somamos os pesos de atenção recebidos/dados por cada token na matriz de atenção</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Computar e visualizar importância
+    fig_importance, imp_data1, imp_data2 = simulator.compare_token_importance(
+        attention_weights1, tokens_used1, real_tokens_count1,
+        attention_weights2, tokens_used2, real_tokens_count2
+    )
+    
+    st.pyplot(fig_importance)
+    
+    # Análise detalhada token por token
+    st.subheader("🔍 Comparação Token por Token")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**📊 Frase 1: Ranking de Importância**")
+        # Criar dataframe para frase 1
+        real_tokens1 = tokens_used1[:real_tokens_count1]
+        imp_rec1, imp_giv1, imp_comb1 = imp_data1
+        
+        df1 = pd.DataFrame({
+            'Token': real_tokens1,
+            'Posição': range(len(real_tokens1)),
+            'Atenção Recebida': imp_rec1,
+            'Atenção Dada': imp_giv1,
+            'Importância Combinada': imp_comb1
+        }).round(3)
+        
+        # Ordenar por importância combinada
+        df1_sorted = df1.sort_values('Importância Combinada', ascending=False)
+        st.dataframe(df1_sorted, use_container_width=True)
+        
+        # Destacar top 3
+        top3_1 = df1_sorted.head(3)['Token'].tolist()
+        st.markdown(f"🏆 **Top 3 mais importantes:** {', '.join(top3_1)}")
+    
+    with col2:
+        st.markdown("**📊 Frase 2: Ranking de Importância**")
+        # Criar dataframe para frase 2
+        real_tokens2 = tokens_used2[:real_tokens_count2]
+        imp_rec2, imp_giv2, imp_comb2 = imp_data2
+        
+        df2 = pd.DataFrame({
+            'Token': real_tokens2,
+            'Posição': range(len(real_tokens2)),
+            'Atenção Recebida': imp_rec2,
+            'Atenção Dada': imp_giv2,
+            'Importância Combinada': imp_comb2
+        }).round(3)
+        
+        # Ordenar por importância combinada
+        df2_sorted = df2.sort_values('Importância Combinada', ascending=False)
+        st.dataframe(df2_sorted, use_container_width=True)
+        
+        # Destacar top 3
+        top3_2 = df2_sorted.head(3)['Token'].tolist()
+        st.markdown(f"🏆 **Top 3 mais importantes:** {', '.join(top3_2)}")
+    
+    # Análise de palavras similares
+    st.subheader("🔄 Análise de Palavras Similares")
+    
+    # Encontrar palavras em comum ou similares
+    set1 = set(real_tokens1)
+    set2 = set(real_tokens2)
+    common_words = set1.intersection(set2)
+    
+    if common_words:
+        st.markdown(f"**🔗 Palavras em comum encontradas:** {', '.join(common_words)}")
+        
+        for word in common_words:
+            if word in real_tokens1 and word in real_tokens2:
+                pos1 = real_tokens1.index(word)
+                pos2 = real_tokens2.index(word)
+                
+                imp1 = imp_comb1[pos1]
+                imp2 = imp_comb2[pos2]
+                
+                col1, col2, col3 = st.columns([1, 1, 2])
+                with col1:
+                    st.metric(f"'{word}' - Frase 1", f"{imp1:.3f}", f"Posição {pos1}")
+                with col2:
+                    st.metric(f"'{word}' - Frase 2", f"{imp2:.3f}", f"Posição {pos2}")
+                with col3:
+                    diff = imp2 - imp1
+                    direction = "maior" if diff > 0 else "menor"
+                    st.markdown(f"**Diferença:** {abs(diff):.3f}")
+                    st.markdown(f"A palavra '{word}' tem importância {direction} na Frase 2")
+    else:
+        st.markdown("**ℹ️ Nenhuma palavra exatamente igual encontrada entre as frases.**")
+        
+        # Buscar palavras similares (mesmo começo)
+        similar_pairs = []
+        for w1 in real_tokens1:
+            for w2 in real_tokens2:
+                if len(w1) > 2 and len(w2) > 2 and w1[:3] == w2[:3] and w1 != w2:
+                    similar_pairs.append((w1, w2))
+        
+        if similar_pairs:
+            st.markdown(f"**🔗 Palavras similares encontradas:** {', '.join([f'{w1}↔{w2}' for w1, w2 in similar_pairs[:3]])}")
+    
+    st.markdown("---")
+    
+    # Parte 4: Análise Comparativa de Padrões de Atenção
+    st.header("4. 📈 Análise Comparativa de Padrões de Atenção")
     
     st.markdown("""
     <div class="explanation">
-        <p>Vamos comparar os padrões de atenção que emergem nas duas frases. Esta comparação nos permite ver como o mecanismo de atenção
-        se comporta de forma diferente dependendo do contexto e da estrutura da frase.</p>
+        <p>Agora vamos comparar os padrões emergentes de atenção entre as duas frases. Esta análise revela como 
+        o contexto influencia fundamentalmente o processamento de cada palavra.</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1020,17 +1295,17 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("Frase 1")
+            st.subheader("📊 Frase 1 - Padrões Detalhados")
             fig_patterns1 = simulator.analyze_attention_patterns(attention_weights1, tokens_used1, real_tokens_count1)
             st.pyplot(fig_patterns1)
         
         with col2:
-            st.subheader("Frase 2")
+            st.subheader("📊 Frase 2 - Padrões Detalhados")
             fig_patterns2 = simulator.analyze_attention_patterns(attention_weights2, tokens_used2, real_tokens_count2)
             st.pyplot(fig_patterns2)
     
     with tab2:
-        st.subheader("Comparação Direta dos Padrões de Atenção")
+        st.subheader("🔄 Comparação Direta dos Padrões de Atenção")
         fig_comparison = simulator.compare_attention_patterns(
             attention_weights1, tokens_used1, real_tokens_count1, 
             attention_weights2, tokens_used2, real_tokens_count2
@@ -1039,24 +1314,32 @@ def main():
         
         st.markdown("""
         <div class="explanation">
-            <p><b>Observações sobre as diferenças:</b></p>
+            <h4>🧠 Insights sobre as diferenças:</h4>
             <ul>
-                <li>Note como palavras homônimas (como "bota" - verbo vs. calçado) apresentam padrões de atenção diferentes dependendo do contexto</li>
-                <li>A distribuição dos pesos de atenção varia entre as frases, refletindo suas diferentes estruturas sintáticas</li>
-                <li>Tokens em posições semelhantes podem ter comportamentos de atenção muito diferentes dependendo do seu papel na frase</li>
+                <li><b>📍 Contexto é rei:</b> Palavras similares em contextos diferentes apresentam padrões de atenção únicos</li>
+                <li><b>📊 Distribuição de pesos:</b> A "forma" da distribuição revela a complexidade sintática da frase</li>
+                <li><b>🎭 Papéis sintáticos:</b> Substantivos, verbos e modificadores mostram comportamentos característicos</li>
+                <li><b>🔗 Dependências:</b> Palavras funcionais (artigos, preposições) tendem a ter padrões mais dispersos</li>
+                <li><b>⚡ Emergência:</b> Padrões complexos emergem automaticamente do treinamento simples</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Parte 4: Multi-Head Attention
-    st.header("4. Multi-Head Attention")
+    # Parte 5: Multi-Head Attention
+    st.header("5. 🧠 Multi-Head Attention")
     
     st.markdown("""
     <div class="explanation">
         <p>Em vez de ter apenas um mecanismo de atenção, os Transformers usam <b>múltiplas cabeças de atenção</b> em paralelo.
-        Cada cabeça pode se especializar em diferentes tipos de relações entre tokens.</p>
+        Cada cabeça pode se especializar em diferentes aspectos da linguagem:</p>
+        <ul>
+            <li>🔗 <b>Relações sintáticas</b> (sujeito-verbo, modificador-substantivo)</li>
+            <li>🎭 <b>Relações semânticas</b> (sinônimos, antonimos, categorias)</li>
+            <li>📍 <b>Proximidade posicional</b> (palavras próximas vs distantes)</li>
+            <li>🎯 <b>Referências</b> (pronomes, anáforas)</li>
+        </ul>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1073,12 +1356,13 @@ def main():
         
         st.markdown(f"""
         <div class="explanation">
-            <p><b>Configuração atual:</b></p>
+            <p><b>⚙️ Configuração atual:</b></p>
             <ul>
-                <li>Número de cabeças: {num_heads}</li>
-                <li>Dimensão por cabeça (d_k): {d_model // num_heads}</li>
-                <li>Dimensão total do modelo (d_model): {d_model}</li>
+                <li>🧠 Número de cabeças: <b>{num_heads}</b></li>
+                <li>📏 Dimensão por cabeça (d_k): <b>{d_model // num_heads}</b></li>
+                <li>🎯 Dimensão total do modelo (d_model): <b>{d_model}</b></li>
             </ul>
+            <p>💡 <b>Observe:</b> Cada cabeça captura padrões únicos - algumas focam em posições próximas, outras em relações específicas!</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1091,12 +1375,8 @@ def main():
         
         st.markdown(f"""
         <div class="explanation">
-            <p><b>Configuração atual:</b></p>
-            <ul>
-                <li>Número de cabeças: {num_heads}</li>
-                <li>Dimensão por cabeça (d_k): {d_model // num_heads}</li>
-                <li>Dimensão total do modelo (d_model): {d_model}</li>
-            </ul>
+            <p><b>🔬 Análise comparativa:</b> Compare como as mesmas {num_heads} cabeças se comportam diferentemente 
+            na segunda frase. Isso demonstra a adaptabilidade do mecanismo de atenção!</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1104,37 +1384,70 @@ def main():
     
     st.markdown("""
     <div class="explanation">
-        <p>Cada cabeça de atenção captura diferentes aspectos das relações entre tokens. 
-        Algumas podem focar em relações gramaticais, outras em relações semânticas ou de proximidade.</p>
-        <p>Os outputs de todas as cabeças são concatenados e passados por uma transformação linear final 
-        para produzir a saída do bloco de Multi-Head Attention.</p>
-        <p>Observe como as diferentes cabeças apresentam padrões distintos para as duas frases, 
-        demonstrando como o modelo captura diferentes aspectos do contexto.</p>
+        <h4>🎭 Especialização das Cabeças</h4>
+        <p>Cada cabeça de atenção desenvolve "personalidades" distintas durante o treinamento:</p>
+        <ul>
+            <li><b>🎯 Cabeças focais:</b> Concentram atenção em poucas palavras específicas</li>
+            <li><b>🌊 Cabeças difusas:</b> Distribuem atenção mais uniformemente</li>
+            <li><b>📍 Cabeças posicionais:</b> Focam em proximidade física na sequência</li>
+            <li><b>🔗 Cabeças relacionais:</b> Capturam dependências sintáticas específicas</li>
+        </ul>
+        <p><b>🔄 Combinação final:</b> Os outputs de todas as cabeças são concatenados e projetados para produzir 
+        a representação final, rica em múltiplas perspectivas da mesma sequência!</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Conclusão
+    # Conclusão expandida
     st.markdown("---")
-    st.header("Conclusão")
+    st.header("🎓 Conclusão e Próximos Passos")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="highlight">
+            <h3>🧠 O que aprendemos</h3>
+            <p>O mecanismo de Attention é revolucionário porque:</p>
+            <ul>
+                <li><b>🔄 Processamento paralelo:</b> Todos os tokens são processados simultaneamente</li>
+                <li><b>🎯 Atenção seletiva:</b> Cada palavra pode focar nas informações mais relevantes</li>
+                <li><b>📍 Consciência posicional:</b> O modelo sabe onde cada palavra está na sequência</li>
+                <li><b>🧠 Múltiplas perspectivas:</b> Diferentes cabeças capturam diferentes aspectos</li>
+                <li><b>⚖️ Importância contextual:</b> A mesma palavra pode ter importâncias diferentes</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="llm-explanation">
+            <h3>🚀 Próximos Passos</h3>
+            <p>Para aprofundar seu entendimento:</p>
+            <ul>
+                <li><b>🎛️ Experimente:</b> Ajuste o número de cabeças no painel lateral</li>
+                <li><b>📝 Gere:</b> Teste diferentes tipos de frases com a API OpenAI</li>
+                <li><b>🔍 Analise:</b> Observe como palavras similares se comportam diferentemente</li>
+                <li><b>📚 Estude:</b> Explore papers sobre Transformer, BERT, GPT</li>
+                <li><b>💻 Implemente:</b> Tente programar seu próprio mecanismo de atenção</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("""
     <div class="highlight">
-        <p>O mecanismo de Attention é o componente central que permite aos Transformers capturar relações complexas 
-        entre elementos de uma sequência, independentemente da distância entre eles.</p>
+        <h3>🌟 O Impacto dos Transformers</h3>
+        <p>Esta arquitetura revolucionou não apenas o NLP, mas toda a IA:</p>
         
-        <p>Como vimos na comparação entre as duas frases, o contexto é fundamental para a interpretação das palavras. 
-        Cada token <b>analisa e considera o conjunto de palavras anteriores</b> para construir sua representação, 
-        permitindo que o modelo diferencie palavras homônimas e capture relações semânticas sutis.</p>
+        <p><b>🗣️ Processamento de Linguagem:</b> BERT, GPT, T5, ChatGPT, Claude</p>
+        <p><b>🖼️ Visão Computacional:</b> Vision Transformer (ViT), DALL-E</p>
+        <p><b>🎵 Áudio:</b> Whisper, MusicLM</p>
+        <p><b>🧬 Ciências:</b> AlphaFold, modelos de proteínas</p>
+        <p><b>🤖 IA Geral:</b> Modelos multimodais como GPT-4V</p>
         
-        <p>Esta capacidade revolucionou o Processamento de Linguagem Natural e outras áreas de IA, 
-        permitindo o desenvolvimento de modelos como BERT, GPT, T5 e outros que alcançam resultados 
-        impressionantes em diversas tarefas.</p>
-        
-        <p>Experimente ajustar o número de cabeças de atenção no painel lateral e gerar diferentes pares de frases 
-        para ver como o mecanismo de atenção se adapta a diferentes contextos!</p>
+        <p>🎯 <b>A chave do sucesso:</b> A capacidade de capturar relações complexas através de um mecanismo 
+        elegante e paralelizável que escala com dados e computação!</p>
     </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
