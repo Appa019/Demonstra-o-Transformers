@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Estilo personalizado
+# Estilo personalizado - CORRIGIDO
 st.markdown("""
 <style>
     .main {
@@ -66,13 +66,6 @@ st.markdown("""
         border-radius: 10px;
         border-left: 5px solid #28a745;
         margin-bottom: 20px;
-    }
-    .api-key-input {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
-        border: 1px solid #e0e0e0;
-        margin-bottom: 15px;
     }
     .comparison-container {
         display: flex;
@@ -205,7 +198,401 @@ with st.sidebar:
         min_value=1,
         max_value=12,
         value=8,
-        step=1,
+        st.pyplot(fig_scores1)
+        
+        # Passo 4: Aplicar pesos aos Values
+        st.subheader("🎯 Passo 4: Computando Output (Attention × Values)")
+        
+        st.markdown("""
+        <div class="explanation">
+            <p>Finalmente, usamos os pesos de atenção para fazer uma média ponderada dos Values.</p>
+            <p>🎭 <b>Resultado</b>: Cada token agora contém informação contextualizada de toda a sequência!</p>
+            <p>✨ <b>Magia</b>: O modelo aprendeu automaticamente quais palavras são importantes para cada contexto</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.pyplot(fig_output1)
+        
+        # Visualização do fluxo de atenção
+        st.subheader("🔄 Fluxo de Atenção para Tokens Específicos")
+        
+        st.markdown("""
+        <div class="attention-flow">
+            <p><b>🧠 Como o modelo "pensa":</b> Cada token analisa todos os tokens anteriores para construir sua representação. 
+            As setas mostram as conexões mais fortes - onde o modelo está "prestando mais atenção".</p>
+            <p>🔍 <b>Experimente</b>: Mude o token selecionado para ver como diferentes palavras focam em aspectos diferentes da frase!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Seletor para o token a ser analisado
+        token_to_analyze1 = st.slider("Selecione o token para analisar (Frase 1)", 
+                                     min_value=2, 
+                                     max_value=min(real_tokens_count1-1, 9), 
+                                     value=min(3, real_tokens_count1-1),
+                                     help="Escolha um token para visualizar como ele presta atenção aos tokens anteriores")
+        
+        flow_fig1 = simulator.visualize_attention_flow(attention_weights1, tokens_used1, token_to_analyze1, real_tokens_count1)
+        st.pyplot(flow_fig1)
+    
+    with tab2:
+        # Mesmo processo para a segunda frase
+        st.subheader("🔍 Passo 1: Criando Query, Key e Value matrices")
+        
+        st.markdown("""
+        <div class="explanation">
+            <p>Observe como os mesmos passos aplicados à segunda frase produzem padrões diferentes:</p>
+            <ul>
+                <li><b>Query (Q)</b>: Cada token busca informações relevantes no contexto da segunda frase</li>
+                <li><b>Key (K)</b>: As "chaves" que cada token oferece dependem do vocabulário e contexto</li>
+                <li><b>Value (V)</b>: O conteúdo semântico varia conforme a estrutura da frase</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        fig_qkv2, fig_scores2, fig_output2, Q2, K2, V2, attention_weights2, output2 = simulator.compute_attention_step_by_step(embeddings2, tokens_used2, real_tokens_count2)
+        st.pyplot(fig_qkv2)
+        
+        # Passo 2 e 3: Calcular Scores e Aplicar Softmax
+        st.subheader("🧮 Passo 2 & 3: Calculando Attention Scores e Aplicando Softmax")
+        
+        st.markdown(f"""
+        <div class="explanation">
+            <p><b>Compare:</b> Note como os padrões de scores diferem da primeira frase</p>
+            <p>🎯 <b>Insight</b>: Palavras similares em contextos diferentes geram scores únicos</p>
+            <p>📊 <b>Softmax</b>: Normaliza os scores para que cada linha some exatamente 1.0</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.pyplot(fig_scores2)
+        
+        # Passo 4: Aplicar pesos aos Values
+        st.subheader("🎯 Passo 4: Computando Output (Attention × Values)")
+        
+        st.markdown("""
+        <div class="explanation">
+            <p>🔄 <b>Agregação contextual</b>: Cada posição recebe uma mistura ponderada de informações</p>
+            <p>🌟 <b>Emergência</b>: O significado final emerge da interação entre todos os tokens</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.pyplot(fig_output2)
+        
+        # Visualização do fluxo de atenção
+        st.subheader("🔄 Fluxo de Atenção para Tokens Específicos")
+        
+        st.markdown("""
+        <div class="attention-flow">
+            <p><b>🔬 Análise comparativa:</b> Compare os padrões de atenção entre as duas frases. 
+            Palavras em posições similares podem ter comportamentos muito diferentes!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Seletor para o token a ser analisado
+        token_to_analyze2 = st.slider("Selecione o token para analisar (Frase 2)", 
+                                     min_value=2, 
+                                     max_value=min(real_tokens_count2-1, 9), 
+                                     value=min(3, real_tokens_count2-1),
+                                     help="Escolha um token para visualizar como ele presta atenção aos tokens anteriores")
+        
+        flow_fig2 = simulator.visualize_attention_flow(attention_weights2, tokens_used2, token_to_analyze2, real_tokens_count2)
+        st.pyplot(flow_fig2)
+    
+    st.markdown("---")
+    
+    # Parte 3: Análise de Importância de Tokens
+    st.header("3. ⚖️ Análise de Importância de Tokens")
+    
+    st.markdown("""
+    <div class="importance-analysis">
+        <h3>🎯 Como Medimos a Importância de um Token?</h3>
+        <p>Analisamos dois aspectos fundamentais do comportamento de atenção:</p>
+        <ul>
+            <li><b>Importância Recebida (Attention IN)</b>: Quanto outros tokens prestam atenção a este token
+                <br>➡️ <i>Indica quão "central" ou "importante" uma palavra é para o contexto geral</i></li>
+            <li><b>Importância Dada (Attention OUT)</b>: Quanto este token presta atenção aos outros
+                <br>➡️ <i>Indica quão "ativo" um token é em buscar informações contextuais</i></li>
+        </ul>
+        <p>🧮 <b>Cálculo</b>: Somamos os pesos de atenção recebidos/dados por cada token na matriz de atenção</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Computar e visualizar importância
+    fig_importance, imp_data1, imp_data2 = simulator.compare_token_importance(
+        attention_weights1, tokens_used1, real_tokens_count1,
+        attention_weights2, tokens_used2, real_tokens_count2
+    )
+    
+    st.pyplot(fig_importance)
+    
+    # Análise detalhada token por token
+    st.subheader("🔍 Comparação Token por Token")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**📊 Frase 1: Ranking de Importância**")
+        # Criar dataframe para frase 1
+        real_tokens1 = tokens_used1[:real_tokens_count1]
+        imp_rec1, imp_giv1, imp_comb1 = imp_data1
+        
+        df1 = pd.DataFrame({
+            'Token': real_tokens1,
+            'Posição': range(len(real_tokens1)),
+            'Atenção Recebida': imp_rec1,
+            'Atenção Dada': imp_giv1,
+            'Importância Combinada': imp_comb1
+        }).round(3)
+        
+        # Ordenar por importância combinada
+        df1_sorted = df1.sort_values('Importância Combinada', ascending=False)
+        st.dataframe(df1_sorted, use_container_width=True)
+        
+        # Destacar top 3
+        top3_1 = df1_sorted.head(3)['Token'].tolist()
+        st.markdown(f"🏆 **Top 3 mais importantes:** {', '.join(top3_1)}")
+    
+    with col2:
+        st.markdown("**📊 Frase 2: Ranking de Importância**")
+        # Criar dataframe para frase 2
+        real_tokens2 = tokens_used2[:real_tokens_count2]
+        imp_rec2, imp_giv2, imp_comb2 = imp_data2
+        
+        df2 = pd.DataFrame({
+            'Token': real_tokens2,
+            'Posição': range(len(real_tokens2)),
+            'Atenção Recebida': imp_rec2,
+            'Atenção Dada': imp_giv2,
+            'Importância Combinada': imp_comb2
+        }).round(3)
+        
+        # Ordenar por importância combinada
+        df2_sorted = df2.sort_values('Importância Combinada', ascending=False)
+        st.dataframe(df2_sorted, use_container_width=True)
+        
+        # Destacar top 3
+        top3_2 = df2_sorted.head(3)['Token'].tolist()
+        st.markdown(f"🏆 **Top 3 mais importantes:** {', '.join(top3_2)}")
+    
+    # Análise de palavras similares
+    st.subheader("🔄 Análise de Palavras Similares")
+    
+    # Encontrar palavras em comum ou similares
+    set1 = set(real_tokens1)
+    set2 = set(real_tokens2)
+    common_words = set1.intersection(set2)
+    
+    if common_words:
+        st.markdown(f"**🔗 Palavras em comum encontradas:** {', '.join(common_words)}")
+        
+        for word in common_words:
+            if word in real_tokens1 and word in real_tokens2:
+                pos1 = real_tokens1.index(word)
+                pos2 = real_tokens2.index(word)
+                
+                imp1 = imp_comb1[pos1]
+                imp2 = imp_comb2[pos2]
+                
+                col1, col2, col3 = st.columns([1, 1, 2])
+                with col1:
+                    st.metric(f"'{word}' - Frase 1", f"{imp1:.3f}", f"Posição {pos1}")
+                with col2:
+                    st.metric(f"'{word}' - Frase 2", f"{imp2:.3f}", f"Posição {pos2}")
+                with col3:
+                    diff = imp2 - imp1
+                    direction = "maior" if diff > 0 else "menor"
+                    st.markdown(f"**Diferença:** {abs(diff):.3f}")
+                    st.markdown(f"A palavra '{word}' tem importância {direction} na Frase 2")
+    else:
+        st.markdown("**ℹ️ Nenhuma palavra exatamente igual encontrada entre as frases.**")
+        
+        # Buscar palavras similares (mesmo começo)
+        similar_pairs = []
+        for w1 in real_tokens1:
+            for w2 in real_tokens2:
+                if len(w1) > 2 and len(w2) > 2 and w1[:3] == w2[:3] and w1 != w2:
+                    similar_pairs.append((w1, w2))
+        
+        if similar_pairs:
+            st.markdown(f"**🔗 Palavras similares encontradas:** {', '.join([f'{w1}↔{w2}' for w1, w2 in similar_pairs[:3]])}")
+    
+    st.markdown("---")
+    
+    # Parte 4: Análise Comparativa de Padrões de Atenção
+    st.header("4. 📈 Análise Comparativa de Padrões de Atenção")
+    
+    st.markdown("""
+    <div class="explanation">
+        <p>Agora vamos comparar os padrões emergentes de atenção entre as duas frases. Esta análise revela como 
+        o contexto influencia fundamentalmente o processamento de cada palavra.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Análise individual
+    tab1, tab2 = st.tabs(["Análise Individual", "Comparação Direta"])
+    
+    with tab1:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📊 Frase 1 - Padrões Detalhados")
+            fig_patterns1 = simulator.analyze_attention_patterns(attention_weights1, tokens_used1, real_tokens_count1)
+            st.pyplot(fig_patterns1)
+        
+        with col2:
+            st.subheader("📊 Frase 2 - Padrões Detalhados")
+            fig_patterns2 = simulator.analyze_attention_patterns(attention_weights2, tokens_used2, real_tokens_count2)
+            st.pyplot(fig_patterns2)
+    
+    with tab2:
+        st.subheader("🔄 Comparação Direta dos Padrões de Atenção")
+        fig_comparison = simulator.compare_attention_patterns(
+            attention_weights1, tokens_used1, real_tokens_count1, 
+            attention_weights2, tokens_used2, real_tokens_count2
+        )
+        st.pyplot(fig_comparison)
+        
+        st.markdown("""
+        <div class="explanation">
+            <h4>🧠 Insights sobre as diferenças:</h4>
+            <ul>
+                <li><strong>📍 Contexto é rei:</strong> Palavras similares em contextos diferentes apresentam padrões de atenção únicos</li>
+                <li><strong>📊 Distribuição de pesos:</strong> A "forma" da distribuição revela a complexidade sintática da frase</li>
+                <li><strong>🎭 Papéis sintáticos:</strong> Substantivos, verbos e modificadores mostram comportamentos característicos</li>
+                <li><strong>🔗 Dependências:</strong> Palavras funcionais (artigos, preposições) tendem a ter padrões mais dispersos</li>
+                <li><strong>⚡ Emergência:</strong> Padrões complexos emergem automaticamente do treinamento simples</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Parte 5: Multi-Head Attention
+    st.header("5. 🧠 Multi-Head Attention")
+    
+    st.markdown("""
+    <div class="explanation">
+        <p>Em vez de ter apenas um mecanismo de atenção, os Transformers usam <b>múltiplas cabeças de atenção</b> em paralelo.
+        Cada cabeça pode se especializar em diferentes aspectos da linguagem:</p>
+        <ul>
+            <li>🔗 <b>Relações sintáticas</b> (sujeito-verbo, modificador-substantivo)</li>
+            <li>🎭 <b>Relações semânticas</b> (sinônimos, antonimos, categorias)</li>
+            <li>📍 <b>Proximidade posicional</b> (palavras próximas vs distantes)</li>
+            <li>🎯 <b>Referências</b> (pronomes, anáforas)</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Inicializar Multi-Head Attention
+    mha = MultiHeadAttention(d_model=d_model, num_heads=num_heads, seq_length=seq_length)
+    
+    # Computar e visualizar
+    tab1, tab2 = st.tabs(["Frase 1", "Frase 2"])
+    
+    with tab1:
+        fig_mha1, final_output1, head_attentions1 = mha.compute_multi_head_attention(
+            embeddings1, tokens_used1, real_tokens_count1
+        )
+        
+        st.markdown(f"""
+        <div class="explanation">
+            <p><strong>⚙️ Configuração atual:</strong></p>
+            <ul>
+                <li>🧠 Número de cabeças: <strong>{num_heads}</strong></li>
+                <li>📏 Dimensão por cabeça (d_k): <strong>{d_model // num_heads}</strong></li>
+                <li>🎯 Dimensão total do modelo (d_model): <strong>{d_model}</strong></li>
+                <li>🔗 Dimensão após concatenação: <strong>{num_heads * (d_model // num_heads)}</strong></li>
+            </ul>
+            <p>💡 <strong>Observe:</strong> Cada cabeça captura padrões únicos - algumas focam em posições próximas, outras em relações específicas!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.pyplot(fig_mha1)
+    
+    with tab2:
+        fig_mha2, final_output2, head_attentions2 = mha.compute_multi_head_attention(
+            embeddings2, tokens_used2, real_tokens_count2
+        )
+        
+        st.markdown(f"""
+        <div class="explanation">
+            <p><strong>🔬 Análise comparativa:</strong> Compare como as mesmas {num_heads} cabeças se comportam diferentemente 
+            na segunda frase. Isso demonstra a adaptabilidade do mecanismo de atenção!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.pyplot(fig_mha2)
+    
+    st.markdown("""
+    <div class="explanation">
+        <h4>🎭 Especialização das Cabeças</h4>
+        <p>Cada cabeça de atenção desenvolve "personalidades" distintas durante o treinamento:</p>
+        <ul>
+            <li><strong>🎯 Cabeças focais:</strong> Concentram atenção em poucas palavras específicas</li>
+            <li><strong>🌊 Cabeças difusas:</strong> Distribuem atenção mais uniformemente</li>
+            <li><strong>📍 Cabeças posicionais:</strong> Focam em proximidade física na sequência</li>
+            <li><strong>🔗 Cabeças relacionais:</strong> Capturam dependências sintáticas específicas</li>
+        </ul>
+        <p><strong>🔄 Combinação final:</strong> Os outputs de todas as cabeças são concatenados e projetados para produzir 
+        a representação final, rica em múltiplas perspectivas da mesma sequência!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Conclusão expandida
+    st.markdown("---")
+    st.header("🎓 Conclusão e Próximos Passos")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="highlight">
+            <h3>🧠 O que aprendemos</h3>
+            <p>O mecanismo de Attention é revolucionário porque:</p>
+            <ul>
+                <li><strong>🔄 Processamento paralelo:</strong> Todos os tokens são processados simultaneamente</li>
+                <li><strong>🎯 Atenção seletiva:</strong> Cada palavra pode focar nas informações mais relevantes</li>
+                <li><strong>📍 Consciência posicional:</strong> O modelo sabe onde cada palavra está na sequência</li>
+                <li><strong>🧠 Múltiplas perspectivas:</strong> Diferentes cabeças capturam diferentes aspectos</li>
+                <li><strong>⚖️ Importância contextual:</strong> A mesma palavra pode ter importâncias diferentes</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="llm-explanation">
+            <h3>🚀 Próximos Passos</h3>
+            <p>Para aprofundar seu entendimento:</p>
+            <ul>
+                <li><strong>🎛️ Experimente:</strong> Ajuste o número de cabeças no painel lateral</li>
+                <li><strong>📝 Gere:</strong> Teste diferentes tipos de frases com a API OpenAI</li>
+                <li><strong>🔍 Analise:</strong> Observe como palavras similares se comportam diferentemente</li>
+                <li><strong>📚 Estude:</strong> Explore papers sobre Transformer, BERT, GPT</li>
+                <li><strong>💻 Implemente:</strong> Tente programar seu próprio mecanismo de atenção</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="highlight">
+        <h3>🌟 O Impacto dos Transformers</h3>
+        <p>Esta arquitetura revolucionou não apenas o NLP, mas toda a IA:</p>
+        
+        <ul>
+            <li><strong>🗣️ Processamento de Linguagem:</strong> BERT, GPT, T5, ChatGPT, Claude</li>
+            <li><strong>🖼️ Visão Computacional:</strong> Vision Transformer (ViT), DALL-E</li>
+            <li><strong>🎵 Áudio:</strong> Whisper, MusicLM</li>
+            <li><strong>🧬 Ciências:</strong> AlphaFold, modelos de proteínas</li>
+            <li><strong>🤖 IA Geral:</strong> Modelos multimodais como GPT-4V</li>
+        </ul>
+        
+        <p><strong>🎯 A chave do sucesso:</strong> A capacidade de capturar relações complexas através de um mecanismo 
+        elegante e paralelizável que escala com dados e computação!</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()ep=1,
         help="Número de cabeças no mecanismo de Multi-Head Attention"
     )
     
@@ -472,144 +859,6 @@ class TransformerSimulator:
         for i in range(real_tokens_count, self.seq_length):
             axes[1].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
             axes[1].axhline(y=i-0.5, color='gray', linestyle='--', alpha=0.3)
-        
-        # Adicionar valores dos pesos na visualização apenas para tokens reais
-        for i in range(real_tokens_count):
-            for j in range(real_tokens_count):
-                text = axes[1].text(j, i, f'{attention_weights[i, j]:.2f}',
-                                  ha="center", va="center", color="black", fontsize=8)
-        
-        plt.colorbar(im2, ax=axes[1])
-        plt.tight_layout()
-        
-        # Passo 4: Aplicar pesos aos Values
-        output = attention_weights @ V
-        
-        # Visualizar o output
-        fig3, axes = plt.subplots(1, 2, figsize=(15, 6))
-        
-        im1 = axes[0].imshow(V.T, cmap='Blues', aspect='auto')
-        axes[0].set_title('Values Matrix (V)')
-        axes[0].set_xlabel('Tokens')
-        axes[0].set_ylabel('Dimensões')
-        axes[0].set_xticks(range(self.seq_length))
-        axes[0].set_xticklabels(x_labels, rotation=45, fontsize=9)
-        
-        # Destacar tokens reais vs padding
-        for i in range(real_tokens_count, self.seq_length):
-            axes[0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
-            
-        plt.colorbar(im1, ax=axes[0])
-        
-        im2 = axes[1].imshow(output.T, cmap='Purples', aspect='auto')
-        axes[1].set_title('Attention Output')
-        axes[1].set_xlabel('Tokens')
-        axes[1].set_ylabel('Dimensões')
-        axes[1].set_xticks(range(self.seq_length))
-        axes[1].set_xticklabels(x_labels, rotation=45, fontsize=9)
-        
-        # Destacar tokens reais vs padding
-        for i in range(real_tokens_count, self.seq_length):
-            axes[1].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
-            
-        plt.colorbar(im2, ax=axes[1])
-        
-        plt.tight_layout()
-        
-        return fig1, fig2, fig3, Q, K, V, attention_weights, output
-    
-    def visualize_attention_flow(self, attention_weights, tokens, token_index=3, real_tokens_count=None):
-        """Visualiza o fluxo de atenção para um token específico"""
-        # Garantir que o índice está dentro dos limites dos tokens reais
-        if real_tokens_count is None:
-            real_tokens_count = len([t for t in tokens if t])
-            
-        token_index = min(token_index, real_tokens_count-1)
-        
-        # Obter os pesos de atenção para o token selecionado
-        token_attention = attention_weights[token_index, :]
-        
-        # Criar figura
-        fig, ax = plt.subplots(figsize=(12, 6))
-        
-        # Posições dos tokens no eixo x
-        token_positions = np.arange(real_tokens_count)
-        
-        # Altura das barras (pesos de atenção) - apenas para tokens reais
-        bar_heights = token_attention[:real_tokens_count]
-        
-        # Criar barras coloridas
-        bars = ax.bar(token_positions, bar_heights, color='skyblue', alpha=0.7)
-        
-        # Destacar o token atual
-        bars[token_index].set_color('red')
-        bars[token_index].set_alpha(1.0)
-        
-        # Adicionar setas para tokens anteriores com peso significativo
-        for i in range(token_index):
-            if token_attention[i] > 0.05:  # Apenas setas para tokens com peso significativo
-                # Coordenadas para a seta
-                start_x = token_positions[token_index]
-                start_y = bar_heights[token_index] * 0.8
-                end_x = token_positions[i]
-                end_y = bar_heights[i] * 0.8
-                
-                # Desenhar seta
-                ax.annotate('', 
-                            xy=(end_x, end_y), 
-                            xytext=(start_x, start_y),
-                            arrowprops=dict(arrowstyle='->', 
-                                           lw=2, 
-                                           color='darkred', 
-                                           alpha=min(1.0, token_attention[i]*3)),
-                            )
-        
-        # Adicionar valores nas barras
-        for i, v in enumerate(bar_heights):
-            ax.text(i, v + 0.02, f'{v:.2f}', ha='center', va='bottom', fontsize=9)
-        
-        # Configurar eixos
-        ax.set_xticks(token_positions)
-        ax.set_xticklabels([t for t in tokens[:real_tokens_count]], rotation=45)
-        ax.set_ylabel('Peso de Atenção')
-        ax.set_title(f'Fluxo de Atenção para o Token "{tokens[token_index]}"')
-        
-        # Adicionar texto explicativo
-        ax.text(0.5, 0.95, 
-                f'O token "{tokens[token_index]}" analisa todos os tokens anteriores\npara construir sua representação contextualizada',
-                transform=ax.transAxes, 
-                ha='center', 
-                va='top',
-                bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.3))
-        
-        plt.tight_layout()
-        
-        return fig
-    
-    def compare_token_importance(self, attention_weights1, tokens1, real_tokens_count1,
-                                attention_weights2, tokens2, real_tokens_count2):
-        """Compara a importância de tokens entre duas frases"""
-        # Calcular importâncias para ambas as frases
-        imp_rec1, imp_giv1, imp_comb1 = calculate_token_importance(attention_weights1, tokens1, real_tokens_count1)
-        imp_rec2, imp_giv2, imp_comb2 = calculate_token_importance(attention_weights2, tokens2, real_tokens_count2)
-        
-        # Criar figura com subplots
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        
-        # Tokens reais apenas
-        real_tokens1 = tokens1[:real_tokens_count1]
-        real_tokens2 = tokens2[:real_tokens_count2]
-        
-        # Gráfico 1: Importância Recebida (quanto outros tokens prestam atenção)
-        x1 = np.arange(len(real_tokens1))
-        x2 = np.arange(len(real_tokens2))
-        
-        bars1 = axes[0,0].bar(x1, imp_rec1, alpha=0.7, color='lightblue', label='Frase 1')
-        axes[0,0].set_title('Importância Recebida (Attention IN)')
-        axes[0,0].set_xlabel('Tokens')
-        axes[0,0].set_ylabel('Soma dos Pesos de Atenção Recebidos')
-        axes[0,0].set_xticks(x1)
-        axes[0,0].set_xticklabels(real_tokens1, rotation=45)
         
         # Adicionar valores nas barras
         for i, v in enumerate(imp_rec1):
@@ -1123,398 +1372,142 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        st.pyplot(fig_scores1)
+        st dos pesos na visualização apenas para tokens reais
+        for i in range(real_tokens_count):
+            for j in range(real_tokens_count):
+                text = axes[1].text(j, i, f'{attention_weights[i, j]:.2f}',
+                                  ha="center", va="center", color="black", fontsize=8)
+        
+        plt.colorbar(im2, ax=axes[1])
+        plt.tight_layout()
         
         # Passo 4: Aplicar pesos aos Values
-        st.subheader("🎯 Passo 4: Computando Output (Attention × Values)")
+        output = attention_weights @ V
         
-        st.markdown("""
-        <div class="explanation">
-            <p>Finalmente, usamos os pesos de atenção para fazer uma média ponderada dos Values.</p>
-            <p>🎭 <b>Resultado</b>: Cada token agora contém informação contextualizada de toda a sequência!</p>
-            <p>✨ <b>Magia</b>: O modelo aprendeu automaticamente quais palavras são importantes para cada contexto</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Visualizar o output
+        fig3, axes = plt.subplots(1, 2, figsize=(15, 6))
         
-        st.pyplot(fig_output1)
+        im1 = axes[0].imshow(V.T, cmap='Blues', aspect='auto')
+        axes[0].set_title('Values Matrix (V)')
+        axes[0].set_xlabel('Tokens')
+        axes[0].set_ylabel('Dimensões')
+        axes[0].set_xticks(range(self.seq_length))
+        axes[0].set_xticklabels(x_labels, rotation=45, fontsize=9)
         
-        # Visualização do fluxo de atenção
-        st.subheader("🔄 Fluxo de Atenção para Tokens Específicos")
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[0].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
+        plt.colorbar(im1, ax=axes[0])
         
-        st.markdown("""
-        <div class="attention-flow">
-            <p><b>🧠 Como o modelo "pensa":</b> Cada token analisa todos os tokens anteriores para construir sua representação. 
-            As setas mostram as conexões mais fortes - onde o modelo está "prestando mais atenção".</p>
-            <p>🔍 <b>Experimente</b>: Mude o token selecionado para ver como diferentes palavras focam em aspectos diferentes da frase!</p>
-        </div>
-        """, unsafe_allow_html=True)
+        im2 = axes[1].imshow(output.T, cmap='Purples', aspect='auto')
+        axes[1].set_title('Attention Output')
+        axes[1].set_xlabel('Tokens')
+        axes[1].set_ylabel('Dimensões')
+        axes[1].set_xticks(range(self.seq_length))
+        axes[1].set_xticklabels(x_labels, rotation=45, fontsize=9)
         
-        # Seletor para o token a ser analisado
-        token_to_analyze1 = st.slider("Selecione o token para analisar (Frase 1)", 
-                                     min_value=2, 
-                                     max_value=min(real_tokens_count1-1, 9), 
-                                     value=min(3, real_tokens_count1-1),
-                                     help="Escolha um token para visualizar como ele presta atenção aos tokens anteriores")
+        # Destacar tokens reais vs padding
+        for i in range(real_tokens_count, self.seq_length):
+            axes[1].axvline(x=i-0.5, color='gray', linestyle='--', alpha=0.3)
+            
+        plt.colorbar(im2, ax=axes[1])
         
-        flow_fig1 = simulator.visualize_attention_flow(attention_weights1, tokens_used1, token_to_analyze1, real_tokens_count1)
-        st.pyplot(flow_fig1)
+        plt.tight_layout()
+        
+        return fig1, fig2, fig3, Q, K, V, attention_weights, output
     
-    with tab2:
-        # Mesmo processo para a segunda frase
-        st.subheader("🔍 Passo 1: Criando Query, Key e Value matrices")
+    def visualize_attention_flow(self, attention_weights, tokens, token_index=3, real_tokens_count=None):
+        """Visualiza o fluxo de atenção para um token específico"""
+        # Garantir que o índice está dentro dos limites dos tokens reais
+        if real_tokens_count is None:
+            real_tokens_count = len([t for t in tokens if t])
+            
+        token_index = min(token_index, real_tokens_count-1)
         
-        st.markdown("""
-        <div class="explanation">
-            <p>Observe como os mesmos passos aplicados à segunda frase produzem padrões diferentes:</p>
-            <ul>
-                <li><b>Query (Q)</b>: Cada token busca informações relevantes no contexto da segunda frase</li>
-                <li><b>Key (K)</b>: As "chaves" que cada token oferece dependem do vocabulário e contexto</li>
-                <li><b>Value (V)</b>: O conteúdo semântico varia conforme a estrutura da frase</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        # Obter os pesos de atenção para o token selecionado
+        token_attention = attention_weights[token_index, :]
         
-        fig_qkv2, fig_scores2, fig_output2, Q2, K2, V2, attention_weights2, output2 = simulator.compute_attention_step_by_step(embeddings2, tokens_used2, real_tokens_count2)
-        st.pyplot(fig_qkv2)
+        # Criar figura
+        fig, ax = plt.subplots(figsize=(12, 6))
         
-        # Passo 2 e 3: Calcular Scores e Aplicar Softmax
-        st.subheader("🧮 Passo 2 & 3: Calculando Attention Scores e Aplicando Softmax")
+        # Posições dos tokens no eixo x
+        token_positions = np.arange(real_tokens_count)
         
-        st.markdown(f"""
-        <div class="explanation">
-            <p><b>Compare:</b> Note como os padrões de scores diferem da primeira frase</p>
-            <p>🎯 <b>Insight</b>: Palavras similares em contextos diferentes geram scores únicos</p>
-            <p>📊 <b>Softmax</b>: Normaliza os scores para que cada linha some exatamente 1.0</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Altura das barras (pesos de atenção) - apenas para tokens reais
+        bar_heights = token_attention[:real_tokens_count]
         
-        st.pyplot(fig_scores2)
+        # Criar barras coloridas
+        bars = ax.bar(token_positions, bar_heights, color='skyblue', alpha=0.7)
         
-        # Passo 4: Aplicar pesos aos Values
-        st.subheader("🎯 Passo 4: Computando Output (Attention × Values)")
+        # Destacar o token atual
+        bars[token_index].set_color('red')
+        bars[token_index].set_alpha(1.0)
         
-        st.markdown("""
-        <div class="explanation">
-            <p>🔄 <b>Agregação contextual</b>: Cada posição recebe uma mistura ponderada de informações</p>
-            <p>🌟 <b>Emergência</b>: O significado final emerge da interação entre todos os tokens</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.pyplot(fig_output2)
-        
-        # Visualização do fluxo de atenção
-        st.subheader("🔄 Fluxo de Atenção para Tokens Específicos")
-        
-        st.markdown("""
-        <div class="attention-flow">
-            <p><b>🔬 Análise comparativa:</b> Compare os padrões de atenção entre as duas frases. 
-            Palavras em posições similares podem ter comportamentos muito diferentes!</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Seletor para o token a ser analisado
-        token_to_analyze2 = st.slider("Selecione o token para analisar (Frase 2)", 
-                                     min_value=2, 
-                                     max_value=min(real_tokens_count2-1, 9), 
-                                     value=min(3, real_tokens_count2-1),
-                                     help="Escolha um token para visualizar como ele presta atenção aos tokens anteriores")
-        
-        flow_fig2 = simulator.visualize_attention_flow(attention_weights2, tokens_used2, token_to_analyze2, real_tokens_count2)
-        st.pyplot(flow_fig2)
-    
-    st.markdown("---")
-    
-    # Parte 3: Análise de Importância de Tokens
-    st.header("3. ⚖️ Análise de Importância de Tokens")
-    
-    st.markdown("""
-    <div class="importance-analysis">
-        <h3>🎯 Como Medimos a Importância de um Token?</h3>
-        <p>Analisamos dois aspectos fundamentais do comportamento de atenção:</p>
-        <ul>
-            <li><b>Importância Recebida (Attention IN)</b>: Quanto outros tokens prestam atenção a este token
-                <br>➡️ <i>Indica quão "central" ou "importante" uma palavra é para o contexto geral</i></li>
-            <li><b>Importância Dada (Attention OUT)</b>: Quanto este token presta atenção aos outros
-                <br>➡️ <i>Indica quão "ativo" um token é em buscar informações contextuais</i></li>
-        </ul>
-        <p>🧮 <b>Cálculo</b>: Somamos os pesos de atenção recebidos/dados por cada token na matriz de atenção</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Computar e visualizar importância
-    fig_importance, imp_data1, imp_data2 = simulator.compare_token_importance(
-        attention_weights1, tokens_used1, real_tokens_count1,
-        attention_weights2, tokens_used2, real_tokens_count2
-    )
-    
-    st.pyplot(fig_importance)
-    
-    # Análise detalhada token por token
-    st.subheader("🔍 Comparação Token por Token")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**📊 Frase 1: Ranking de Importância**")
-        # Criar dataframe para frase 1
-        real_tokens1 = tokens_used1[:real_tokens_count1]
-        imp_rec1, imp_giv1, imp_comb1 = imp_data1
-        
-        df1 = pd.DataFrame({
-            'Token': real_tokens1,
-            'Posição': range(len(real_tokens1)),
-            'Atenção Recebida': imp_rec1,
-            'Atenção Dada': imp_giv1,
-            'Importância Combinada': imp_comb1
-        }).round(3)
-        
-        # Ordenar por importância combinada
-        df1_sorted = df1.sort_values('Importância Combinada', ascending=False)
-        st.dataframe(df1_sorted, use_container_width=True)
-        
-        # Destacar top 3
-        top3_1 = df1_sorted.head(3)['Token'].tolist()
-        st.markdown(f"🏆 **Top 3 mais importantes:** {', '.join(top3_1)}")
-    
-    with col2:
-        st.markdown("**📊 Frase 2: Ranking de Importância**")
-        # Criar dataframe para frase 2
-        real_tokens2 = tokens_used2[:real_tokens_count2]
-        imp_rec2, imp_giv2, imp_comb2 = imp_data2
-        
-        df2 = pd.DataFrame({
-            'Token': real_tokens2,
-            'Posição': range(len(real_tokens2)),
-            'Atenção Recebida': imp_rec2,
-            'Atenção Dada': imp_giv2,
-            'Importância Combinada': imp_comb2
-        }).round(3)
-        
-        # Ordenar por importância combinada
-        df2_sorted = df2.sort_values('Importância Combinada', ascending=False)
-        st.dataframe(df2_sorted, use_container_width=True)
-        
-        # Destacar top 3
-        top3_2 = df2_sorted.head(3)['Token'].tolist()
-        st.markdown(f"🏆 **Top 3 mais importantes:** {', '.join(top3_2)}")
-    
-    # Análise de palavras similares
-    st.subheader("🔄 Análise de Palavras Similares")
-    
-    # Encontrar palavras em comum ou similares
-    set1 = set(real_tokens1)
-    set2 = set(real_tokens2)
-    common_words = set1.intersection(set2)
-    
-    if common_words:
-        st.markdown(f"**🔗 Palavras em comum encontradas:** {', '.join(common_words)}")
-        
-        for word in common_words:
-            if word in real_tokens1 and word in real_tokens2:
-                pos1 = real_tokens1.index(word)
-                pos2 = real_tokens2.index(word)
+        # Adicionar setas para tokens anteriores com peso significativo
+        for i in range(token_index):
+            if token_attention[i] > 0.05:  # Apenas setas para tokens com peso significativo
+                # Coordenadas para a seta
+                start_x = token_positions[token_index]
+                start_y = bar_heights[token_index] * 0.8
+                end_x = token_positions[i]
+                end_y = bar_heights[i] * 0.8
                 
-                imp1 = imp_comb1[pos1]
-                imp2 = imp_comb2[pos2]
-                
-                col1, col2, col3 = st.columns([1, 1, 2])
-                with col1:
-                    st.metric(f"'{word}' - Frase 1", f"{imp1:.3f}", f"Posição {pos1}")
-                with col2:
-                    st.metric(f"'{word}' - Frase 2", f"{imp2:.3f}", f"Posição {pos2}")
-                with col3:
-                    diff = imp2 - imp1
-                    direction = "maior" if diff > 0 else "menor"
-                    st.markdown(f"**Diferença:** {abs(diff):.3f}")
-                    st.markdown(f"A palavra '{word}' tem importância {direction} na Frase 2")
-    else:
-        st.markdown("**ℹ️ Nenhuma palavra exatamente igual encontrada entre as frases.**")
+                # Desenhar seta
+                ax.annotate('', 
+                            xy=(end_x, end_y), 
+                            xytext=(start_x, start_y),
+                            arrowprops=dict(arrowstyle='->', 
+                                           lw=2, 
+                                           color='darkred', 
+                                           alpha=min(1.0, token_attention[i]*3)),
+                            )
         
-        # Buscar palavras similares (mesmo começo)
-        similar_pairs = []
-        for w1 in real_tokens1:
-            for w2 in real_tokens2:
-                if len(w1) > 2 and len(w2) > 2 and w1[:3] == w2[:3] and w1 != w2:
-                    similar_pairs.append((w1, w2))
+        # Adicionar valores nas barras
+        for i, v in enumerate(bar_heights):
+            ax.text(i, v + 0.02, f'{v:.2f}', ha='center', va='bottom', fontsize=9)
         
-        if similar_pairs:
-            st.markdown(f"**🔗 Palavras similares encontradas:** {', '.join([f'{w1}↔{w2}' for w1, w2 in similar_pairs[:3]])}")
-    
-    st.markdown("---")
-    
-    # Parte 4: Análise Comparativa de Padrões de Atenção
-    st.header("4. 📈 Análise Comparativa de Padrões de Atenção")
-    
-    st.markdown("""
-    <div class="explanation">
-        <p>Agora vamos comparar os padrões emergentes de atenção entre as duas frases. Esta análise revela como 
-        o contexto influencia fundamentalmente o processamento de cada palavra.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Análise individual
-    tab1, tab2 = st.tabs(["Análise Individual", "Comparação Direta"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
+        # Configurar eixos
+        ax.set_xticks(token_positions)
+        ax.set_xticklabels([t for t in tokens[:real_tokens_count]], rotation=45)
+        ax.set_ylabel('Peso de Atenção')
+        ax.set_title(f'Fluxo de Atenção para o Token "{tokens[token_index]}"')
         
-        with col1:
-            st.subheader("📊 Frase 1 - Padrões Detalhados")
-            fig_patterns1 = simulator.analyze_attention_patterns(attention_weights1, tokens_used1, real_tokens_count1)
-            st.pyplot(fig_patterns1)
+        # Adicionar texto explicativo
+        ax.text(0.5, 0.95, 
+                f'O token "{tokens[token_index]}" analisa todos os tokens anteriores\npara construir sua representação contextualizada',
+                transform=ax.transAxes, 
+                ha='center', 
+                va='top',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.3))
         
-        with col2:
-            st.subheader("📊 Frase 2 - Padrões Detalhados")
-            fig_patterns2 = simulator.analyze_attention_patterns(attention_weights2, tokens_used2, real_tokens_count2)
-            st.pyplot(fig_patterns2)
-    
-    with tab2:
-        st.subheader("🔄 Comparação Direta dos Padrões de Atenção")
-        fig_comparison = simulator.compare_attention_patterns(
-            attention_weights1, tokens_used1, real_tokens_count1, 
-            attention_weights2, tokens_used2, real_tokens_count2
-        )
-        st.pyplot(fig_comparison)
+        plt.tight_layout()
         
-        st.markdown("""
-        <div class="explanation">
-            <h4>🧠 Insights sobre as diferenças:</h4>
-            <ul>
-                <li><strong>📍 Contexto é rei:</strong> Palavras similares em contextos diferentes apresentam padrões de atenção únicos</li>
-                <li><strong>📊 Distribuição de pesos:</strong> A "forma" da distribuição revela a complexidade sintática da frase</li>
-                <li><strong>🎭 Papéis sintáticos:</strong> Substantivos, verbos e modificadores mostram comportamentos característicos</li>
-                <li><strong>🔗 Dependências:</strong> Palavras funcionais (artigos, preposições) tendem a ter padrões mais dispersos</li>
-                <li><strong>⚡ Emergência:</strong> Padrões complexos emergem automaticamente do treinamento simples</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        return fig
     
-    st.markdown("---")
-    
-    # Parte 5: Multi-Head Attention
-    st.header("5. 🧠 Multi-Head Attention")
-    
-    st.markdown("""
-    <div class="explanation">
-        <p>Em vez de ter apenas um mecanismo de atenção, os Transformers usam <b>múltiplas cabeças de atenção</b> em paralelo.
-        Cada cabeça pode se especializar em diferentes aspectos da linguagem:</p>
-        <ul>
-            <li>🔗 <b>Relações sintáticas</b> (sujeito-verbo, modificador-substantivo)</li>
-            <li>🎭 <b>Relações semânticas</b> (sinônimos, antonimos, categorias)</li>
-            <li>📍 <b>Proximidade posicional</b> (palavras próximas vs distantes)</li>
-            <li>🎯 <b>Referências</b> (pronomes, anáforas)</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Inicializar Multi-Head Attention
-    mha = MultiHeadAttention(d_model=d_model, num_heads=num_heads, seq_length=seq_length)
-    
-    # Computar e visualizar
-    tab1, tab2 = st.tabs(["Frase 1", "Frase 2"])
-    
-    with tab1:
-        fig_mha1, final_output1, head_attentions1 = mha.compute_multi_head_attention(
-            embeddings1, tokens_used1, real_tokens_count1
-        )
+    def compare_token_importance(self, attention_weights1, tokens1, real_tokens_count1,
+                                attention_weights2, tokens2, real_tokens_count2):
+        """Compara a importância de tokens entre duas frases"""
+        # Calcular importâncias para ambas as frases
+        imp_rec1, imp_giv1, imp_comb1 = calculate_token_importance(attention_weights1, tokens1, real_tokens_count1)
+        imp_rec2, imp_giv2, imp_comb2 = calculate_token_importance(attention_weights2, tokens2, real_tokens_count2)
         
-        st.markdown(f"""
-        <div class="explanation">
-            <p><strong>⚙️ Configuração atual:</strong></p>
-            <ul>
-                <li>🧠 Número de cabeças: <strong>{num_heads}</strong></li>
-                <li>📏 Dimensão por cabeça (d_k): <strong>{d_model // num_heads}</strong></li>
-                <li>🎯 Dimensão total do modelo (d_model): <strong>{d_model}</strong></li>
-                <li>🔗 Dimensão após concatenação: <strong>{num_heads * (d_model // num_heads)}</strong></li>
-            </ul>
-            <p>💡 <strong>Observe:</strong> Cada cabeça captura padrões únicos - algumas focam em posições próximas, outras em relações específicas!</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Criar figura com subplots
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
         
-        st.pyplot(fig_mha1)
-    
-    with tab2:
-        fig_mha2, final_output2, head_attentions2 = mha.compute_multi_head_attention(
-            embeddings2, tokens_used2, real_tokens_count2
-        )
+        # Tokens reais apenas
+        real_tokens1 = tokens1[:real_tokens_count1]
+        real_tokens2 = tokens2[:real_tokens_count2]
         
-        st.markdown(f"""
-        <div class="explanation">
-            <p><strong>🔬 Análise comparativa:</strong> Compare como as mesmas {num_heads} cabeças se comportam diferentemente 
-            na segunda frase. Isso demonstra a adaptabilidade do mecanismo de atenção!</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Gráfico 1: Importância Recebida (quanto outros tokens prestam atenção)
+        x1 = np.arange(len(real_tokens1))
+        x2 = np.arange(len(real_tokens2))
         
-        st.pyplot(fig_mha2)
-    
-    st.markdown("""
-    <div class="explanation">
-        <h4>🎭 Especialização das Cabeças</h4>
-        <p>Cada cabeça de atenção desenvolve "personalidades" distintas durante o treinamento:</p>
-        <ul>
-            <li><strong>🎯 Cabeças focais:</strong> Concentram atenção em poucas palavras específicas</li>
-            <li><strong>🌊 Cabeças difusas:</strong> Distribuem atenção mais uniformemente</li>
-            <li><strong>📍 Cabeças posicionais:</strong> Focam em proximidade física na sequência</li>
-            <li><strong>🔗 Cabeças relacionais:</strong> Capturam dependências sintáticas específicas</li>
-        </ul>
-        <p><strong>🔄 Combinação final:</strong> Os outputs de todas as cabeças são concatenados e projetados para produzir 
-        a representação final, rica em múltiplas perspectivas da mesma sequência!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Conclusão expandida
-    st.markdown("---")
-    st.header("🎓 Conclusão e Próximos Passos")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        <div class="highlight">
-            <h3>🧠 O que aprendemos</h3>
-            <p>O mecanismo de Attention é revolucionário porque:</p>
-            <ul>
-                <li><strong>🔄 Processamento paralelo:</strong> Todos os tokens são processados simultaneamente</li>
-                <li><strong>🎯 Atenção seletiva:</strong> Cada palavra pode focar nas informações mais relevantes</li>
-                <li><strong>📍 Consciência posicional:</strong> O modelo sabe onde cada palavra está na sequência</li>
-                <li><strong>🧠 Múltiplas perspectivas:</strong> Diferentes cabeças capturam diferentes aspectos</li>
-                <li><strong>⚖️ Importância contextual:</strong> A mesma palavra pode ter importâncias diferentes</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class="llm-explanation">
-            <h3>🚀 Próximos Passos</h3>
-            <p>Para aprofundar seu entendimento:</p>
-            <ul>
-                <li><strong>🎛️ Experimente:</strong> Ajuste o número de cabeças no painel lateral</li>
-                <li><strong>📝 Gere:</strong> Teste diferentes tipos de frases com a API OpenAI</li>
-                <li><strong>🔍 Analise:</strong> Observe como palavras similares se comportam diferentemente</li>
-                <li><strong>📚 Estude:</strong> Explore papers sobre Transformer, BERT, GPT</li>
-                <li><strong>💻 Implemente:</strong> Tente programar seu próprio mecanismo de atenção</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="highlight">
-        <h3>🌟 O Impacto dos Transformers</h3>
-        <p>Esta arquitetura revolucionou não apenas o NLP, mas toda a IA:</p>
+        bars1 = axes[0,0].bar(x1, imp_rec1, alpha=0.7, color='lightblue', label='Frase 1')
+        axes[0,0].set_title('Importância Recebida (Attention IN)')
+        axes[0,0].set_xlabel('Tokens')
+        axes[0,0].set_ylabel('Soma dos Pesos de Atenção Recebidos')
+        axes[0,0].set_xticks(x1)
+        axes[0,0].set_xticklabels(real_tokens1, rotation=45)
         
-        <ul>
-            <li><strong>🗣️ Processamento de Linguagem:</strong> BERT, GPT, T5, ChatGPT, Claude</li>
-            <li><strong>🖼️ Visão Computacional:</strong> Vision Transformer (ViT), DALL-E</li>
-            <li><strong>🎵 Áudio:</strong> Whisper, MusicLM</li>
-            <li><strong>🧬 Ciências:</strong> AlphaFold, modelos de proteínas</li>
-            <li><strong>🤖 IA Geral:</strong> Modelos multimodais como GPT-4V</li>
-        </ul>
-        
-        <p><strong>🎯 A chave do sucesso:</strong> A capacidade de capturar relações complexas através de um mecanismo 
-        elegante e paralelizável que escala com dados e computação!</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-if __name__ == "__main__":
-    main()
+        # Adicionar valores
