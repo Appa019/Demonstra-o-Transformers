@@ -1380,11 +1380,11 @@ def main():
         <div class="explanation">
             <h4>🧠 Insights sobre as diferenças:</h4>
             <ul>
-                <li><b>📍 Contexto é rei:</b> Palavras similares em contextos diferentes apresentam padrões de atenção únicos</li>
-                <li><b>📊 Distribuição de pesos:</b> A "forma" da distribuição revela a complexidade sintática da frase</li>
-                <li><b>🎭 Papéis sintáticos:</b> Substantivos, verbos e modificadores mostram comportamentos característicos</li>
-                <li><b>🔗 Dependências:</b> Palavras funcionais (artigos, preposições) tendem a ter padrões mais dispersos</li>
-                <li><b>⚡ Emergência:</b> Padrões complexos emergem automaticamente do treinamento simples</li>
+                <li><strong>📍 Contexto é rei:</strong> Palavras similares em contextos diferentes apresentam padrões de atenção únicos</li>
+                <li><strong>📊 Distribuição de pesos:</strong> A "forma" da distribuição revela a complexidade sintática da frase</li>
+                <li><strong>🎭 Papéis sintáticos:</strong> Substantivos, verbos e modificadores mostram comportamentos característicos</li>
+                <li><strong>🔗 Dependências:</strong> Palavras funcionais (artigos, preposições) tendem a ter padrões mais dispersos</li>
+                <li><strong>⚡ Emergência:</strong> Padrões complexos emergem automaticamente do treinamento simples</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1420,14 +1420,14 @@ def main():
         
         st.markdown(f"""
         <div class="explanation">
-            <p><b>⚙️ Configuração atual:</b></p>
+            <p><strong>⚙️ Configuração atual:</strong></p>
             <ul>
-                <li>🧠 Número de cabeças: <b>{num_heads}</b></li>
-                <li>📏 Dimensão por cabeça (d_k): <b>{d_model // num_heads}</b></li>
-                <li>🎯 Dimensão total do modelo (d_model): <b>{d_model}</b></li>
-                <li>🔗 Dimensão após concatenação: <b>{num_heads * (d_model // num_heads)}</b></li>
+                <li>🧠 Número de cabeças: <strong>{num_heads}</strong></li>
+                <li>📏 Dimensão por cabeça (d_k): <strong>{d_model // num_heads}</strong></li>
+                <li>🎯 Dimensão total do modelo (d_model): <strong>{d_model}</strong></li>
+                <li>🔗 Dimensão após concatenação: <strong>{num_heads * (d_model // num_heads)}</strong></li>
             </ul>
-            <p>💡 <b>Observe:</b> Cada cabeça captura padrões únicos - algumas focam em posições próximas, outras em relações específicas!</p>
+            <p>💡 <strong>Observe:</strong> Cada cabeça captura padrões únicos - algumas focam em posições próximas, outras em relações específicas!</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1440,7 +1440,7 @@ def main():
         
         st.markdown(f"""
         <div class="explanation">
-            <p><b>🔬 Análise comparativa:</b> Compare como as mesmas {num_heads} cabeças se comportam diferentemente 
+            <p><strong>🔬 Análise comparativa:</strong> Compare como as mesmas {num_heads} cabeças se comportam diferentemente 
             na segunda frase. Isso demonstra a adaptabilidade do mecanismo de atenção!</p>
         </div>
         """, unsafe_allow_html=True)
@@ -1452,12 +1452,12 @@ def main():
         <h4>🎭 Especialização das Cabeças</h4>
         <p>Cada cabeça de atenção desenvolve "personalidades" distintas durante o treinamento:</p>
         <ul>
-            <li><b>🎯 Cabeças focais:</b> Concentram atenção em poucas palavras específicas</li>
-            <li><b>🌊 Cabeças difusas:</b> Distribuem atenção mais uniformemente</li>
-            <li><b>📍 Cabeças posicionais:</b> Focam em proximidade física na sequência</li>
-            <li><b>🔗 Cabeças relacionais:</b> Capturam dependências sintáticas específicas</li>
+            <li><strong>🎯 Cabeças focais:</strong> Concentram atenção em poucas palavras específicas</li>
+            <li><strong>🌊 Cabeças difusas:</strong> Distribuem atenção mais uniformemente</li>
+            <li><strong>📍 Cabeças posicionais:</strong> Focam em proximidade física na sequência</li>
+            <li><strong>🔗 Cabeças relacionais:</strong> Capturam dependências sintáticas específicas</li>
         </ul>
-        <p><b>🔄 Combinação final:</b> Os outputs de todas as cabeças são concatenados e projetados para produzir 
+        <p><strong>🔄 Combinação final:</strong> Os outputs de todas as cabeças são concatenados e projetados para produzir 
         a representação final, rica em múltiplas perspectivas da mesma sequência!</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1474,11 +1474,11 @@ def main():
             <h3>🧠 O que aprendemos</h3>
             <p>O mecanismo de Attention é revolucionário porque:</p>
             <ul>
-                <li><b>🔄 Processamento paralelo:</b> Todos os tokens são processados simultaneamente</li>
-                <li><b>🎯 Atenção seletiva:</b> Cada palavra pode focar nas informações mais relevantes</li>
-                <li><b>📍 Consciência posicional:</b> O modelo sabe onde cada palavra está na sequência</li>
-                <li><b>🧠 Múltiplas perspectivas:</b> Diferentes cabeças capturam diferentes aspectos</li>
-                <li><b>⚖️ Importância contextual:</b> A mesma palavra pode ter importâncias diferentes</li>
+                <li><strong>🔄 Processamento paralelo:</strong> Todos os tokens são processados simultaneamente</li>
+                <li><strong>🎯 Atenção seletiva:</strong> Cada palavra pode focar nas informações mais relevantes</li>
+                <li><strong>📍 Consciência posicional:</strong> O modelo sabe onde cada palavra está na sequência</li>
+                <li><strong>🧠 Múltiplas perspectivas:</strong> Diferentes cabeças capturam diferentes aspectos</li>
+                <li><strong>⚖️ Importância contextual:</strong> A mesma palavra pode ter importâncias diferentes</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1489,11 +1489,11 @@ def main():
             <h3>🚀 Próximos Passos</h3>
             <p>Para aprofundar seu entendimento:</p>
             <ul>
-                <li><b>🎛️ Experimente:</b> Ajuste o número de cabeças no painel lateral</li>
-                <li><b>📝 Gere:</b> Teste diferentes tipos de frases com a API OpenAI</li>
-                <li><b>🔍 Analise:</b> Observe como palavras similares se comportam diferentemente</li>
-                <li><b>📚 Estude:</b> Explore papers sobre Transformer, BERT, GPT</li>
-                <li><b>💻 Implemente:</b> Tente programar seu próprio mecanismo de atenção</li>
+                <li><strong>🎛️ Experimente:</strong> Ajuste o número de cabeças no painel lateral</li>
+                <li><strong>📝 Gere:</strong> Teste diferentes tipos de frases com a API OpenAI</li>
+                <li><strong>🔍 Analise:</strong> Observe como palavras similares se comportam diferentemente</li>
+                <li><strong>📚 Estude:</strong> Explore papers sobre Transformer, BERT, GPT</li>
+                <li><strong>💻 Implemente:</strong> Tente programar seu próprio mecanismo de atenção</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1503,13 +1503,15 @@ def main():
         <h3>🌟 O Impacto dos Transformers</h3>
         <p>Esta arquitetura revolucionou não apenas o NLP, mas toda a IA:</p>
         
-        <p><b>🗣️ Processamento de Linguagem:</b> BERT, GPT, T5, ChatGPT, Claude</p>
-        <p><b>🖼️ Visão Computacional:</b> Vision Transformer (ViT), DALL-E</p>
-        <p><b>🎵 Áudio:</b> Whisper, MusicLM</p>
-        <p><b>🧬 Ciências:</b> AlphaFold, modelos de proteínas</p>
-        <p><b>🤖 IA Geral:</b> Modelos multimodais como GPT-4V</p>
+        <ul>
+            <li><strong>🗣️ Processamento de Linguagem:</strong> BERT, GPT, T5, ChatGPT, Claude</li>
+            <li><strong>🖼️ Visão Computacional:</strong> Vision Transformer (ViT), DALL-E</li>
+            <li><strong>🎵 Áudio:</strong> Whisper, MusicLM</li>
+            <li><strong>🧬 Ciências:</strong> AlphaFold, modelos de proteínas</li>
+            <li><strong>🤖 IA Geral:</strong> Modelos multimodais como GPT-4V</li>
+        </ul>
         
-        <p>🎯 <b>A chave do sucesso:</b> A capacidade de capturar relações complexas através de um mecanismo 
+        <p><strong>🎯 A chave do sucesso:</strong> A capacidade de capturar relações complexas através de um mecanismo 
         elegante e paralelizável que escala com dados e computação!</p>
     </div>
     """, unsafe_allow_html=True)
