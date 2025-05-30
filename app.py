@@ -632,18 +632,18 @@ def main():
     
     if use_example:
         # Frases de exemplo
-        sentence1 = "O gato de botas caminha pela floresta"
-        sentence2 = "A galinha bota ovos no galinheiro"
+        sentence1 = "O gato de botas caminha pela floresta com calma"
+        sentence2 = "A galinha bota ovos no galinheiro na fazenda calma"
         
         st.markdown("""
         <div class="comparison-container">
             <div class="comparison-card">
                 <h4>Frase 1:</h4>
-                <p>O gato de botas caminha pela floresta</p>
+                <p>O gato de botas caminha pela floresta com calma</p>
             </div>
             <div class="comparison-card">
                 <h4>Frase 2:</h4>
-                <p>A galinha bota ovos no galinheiro</p>
+                <p>A galinha bota ovos no galinheiro na fazenda calma</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
